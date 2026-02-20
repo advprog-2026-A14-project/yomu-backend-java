@@ -1,0 +1,43 @@
+name: Continuous Integration (CI)
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      simulate_quality_failure:
+        description: "Fail quality gate intentionally to verify CD blocking"
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  unit_tests:
+    name: Unit tests
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out the Git repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java toolchain
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Run unit tests
+        run: ./gradlew test
+
+  quality_checks:
+    name: Quality checks (PMD + JaCoCo)
+    uses: ./.github/workflows/pmd.yml
+    with:
+      simulate_failure: ${{ github.event_name == 'workflow_dispatch' && inputs.simulate_quality_failure == true }}
