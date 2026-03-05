@@ -105,6 +105,22 @@
   - `401` jika token tidak ada/tidak valid atau user tidak ditemukan
   - `403` jika akun sudah tidak aktif (`deleted_at` tidak null)
 
+## Update Account Endpoints
+- Method & path: `PATCH /api/v1/users/me`
+  - Request body: `{"username": "...", "display_name": "..."}` (minimal salah satu field harus diisi)
+  - Error: `400` jika payload kosong, `409` jika `username` sudah dipakai
+  - Success `200`: wrapper + data user terbaru
+- Method & path: `PATCH /api/v1/users/me/password`
+  - Request body: `{"current_password":"...", "new_password":"..."}` (`new_password` wajib)
+  - Untuk user local (`password_hash` sudah ada), `current_password` wajib benar
+  - Untuk user SSO-only (`password_hash` null), `current_password` boleh null untuk set password pertama
+  - Error: `401` jika current password salah
+  - Success `200`: wrapper sukses tanpa `data`
+- Method & path: `PATCH /api/v1/users/me/login-identifiers`
+  - Request body: `{"email":"...", "phone_number":"..."}` (minimal salah satu field harus diisi)
+  - Error: `400` jika payload kosong, `409` jika email/phone sudah dipakai
+  - Success `200`: wrapper + data user terbaru
+
 ## Internal Endpoint Contract
 - Semua endpoint internal Rust menggunakan prefix `/api/internal/...`.
 - Wajib header `x-api-key: <ENV_SECRET>`.
