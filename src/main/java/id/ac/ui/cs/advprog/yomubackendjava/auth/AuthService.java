@@ -2,7 +2,6 @@ package id.ac.ui.cs.advprog.yomubackendjava.auth;
 
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.AuthResponseData;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.RegisterRequest;
-import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.UserDto;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
@@ -26,11 +25,18 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuthMapper authMapper;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            AuthMapper authMapper
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.authMapper = authMapper;
     }
 
     public ApiResponse<AuthResponseData> registerLocal(RegisterRequest request) {
@@ -58,7 +64,7 @@ public class AuthService {
         }
 
         String accessToken = jwtService.generateToken(savedUser.getUserId(), savedUser.getRole());
-        AuthResponseData responseData = new AuthResponseData(accessToken, toUserDto(savedUser));
+        AuthResponseData responseData = new AuthResponseData(accessToken, authMapper.toUserDto(savedUser));
         return ApiResponse.success(REGISTER_SUCCESS_MESSAGE, responseData);
     }
 
@@ -78,17 +84,6 @@ public class AuthService {
         if (phoneNumber != null && userRepository.findByPhoneNumberAndDeletedAtIsNull(phoneNumber).isPresent()) {
             throw new ConflictException(PHONE_USED_MESSAGE);
         }
-    }
-
-    private UserDto toUserDto(UserEntity user) {
-        return new UserDto(
-                user.getUserId().toString(),
-                user.getUsername(),
-                user.getDisplayName(),
-                user.getEmail(),
-                user.getPhoneNumber(),
-                user.getRole().name()
-        );
     }
 
     private String normalize(String value) {
