@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.auth;
 
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.AuthResponseData;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.RegisterRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
 import jakarta.validation.Valid;
@@ -22,5 +23,10 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponseData>> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.registerLocal(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<AuthResponseData>> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.loginLocal(request));
     }
 }

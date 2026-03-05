@@ -1,10 +1,13 @@
 package id.ac.ui.cs.advprog.yomubackendjava.auth;
 
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.AuthResponseData;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.RegisterRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.yomubackendjava.integration.rust.RustEngineClient;
 import id.ac.ui.cs.advprog.yomubackendjava.outbox.OutboxService;
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
@@ -18,6 +21,7 @@ import org.springframework.web.client.RestClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -29,6 +33,10 @@ public class AuthService {
     private static final String EMAIL_USED_MESSAGE = "email sudah digunakan";
     private static final String PHONE_USED_MESSAGE = "phone_number sudah digunakan";
     private static final String GENERIC_CONFLICT_MESSAGE = "data sudah digunakan";
+    private static final String LOGIN_SUCCESS_MESSAGE = "Login berhasil";
+    private static final String LOGIN_INVALID_CREDENTIALS_MESSAGE = "identifier atau password salah";
+    private static final String LOGIN_DELETED_MESSAGE = "akun tidak aktif";
+    private static final String LOGIN_SSO_ONLY_MESSAGE = "akun menggunakan metode login lain";
     private static final int RUST_SYNC_CREATED_STATUS = 201;
     private static final int RUST_SYNC_CONFLICT_STATUS = 409;
 
@@ -86,6 +94,35 @@ public class AuthService {
         return ApiResponse.success(REGISTER_SUCCESS_MESSAGE, responseData);
     }
 
+    public ApiResponse<AuthResponseData> loginLocal(LoginRequest request) {
+        String identifier = normalize(request.getIdentifier());
+        if (identifier == null) {
+            throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
+        }
+
+        IdentifierType identifierType = resolveIdentifierType(identifier);
+        Optional<UserEntity> activeUserOpt = findActiveUser(identifierType, identifier);
+        if (activeUserOpt.isEmpty()) {
+            Optional<UserEntity> anyUser = findAnyUser(identifierType, identifier);
+            if (anyUser.isPresent() && anyUser.get().getDeletedAt() != null) {
+                throw new ForbiddenException(LOGIN_DELETED_MESSAGE);
+            }
+            throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
+        }
+
+        UserEntity user = activeUserOpt.get();
+        if (user.getPasswordHash() == null) {
+            throw new UnauthorizedException(LOGIN_SSO_ONLY_MESSAGE);
+        }
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
+        }
+
+        String accessToken = jwtService.generateToken(user.getUserId(), user.getRole());
+        AuthResponseData responseData = new AuthResponseData(accessToken, authMapper.toUserDto(user));
+        return ApiResponse.success(LOGIN_SUCCESS_MESSAGE, responseData);
+    }
+
     private void syncUserToRust(UUID userId) {
         try {
             RustEngineClient.SyncResult syncResult = rustEngineClient.syncUser(userId);
@@ -124,11 +161,52 @@ public class AuthService {
         }
     }
 
+    private Optional<UserEntity> findActiveUser(IdentifierType identifierType, String identifier) {
+        return switch (identifierType) {
+            case EMAIL -> userRepository.findByEmailAndDeletedAtIsNull(identifier);
+            case PHONE_NUMBER -> userRepository.findByPhoneNumberAndDeletedAtIsNull(identifier);
+            case USERNAME -> userRepository.findByUsernameAndDeletedAtIsNull(identifier);
+        };
+    }
+
+    private Optional<UserEntity> findAnyUser(IdentifierType identifierType, String identifier) {
+        return switch (identifierType) {
+            case EMAIL -> userRepository.findByEmail(identifier);
+            case PHONE_NUMBER -> userRepository.findByPhoneNumber(identifier);
+            case USERNAME -> userRepository.findByUsername(identifier);
+        };
+    }
+
+    private IdentifierType resolveIdentifierType(String identifier) {
+        if (identifier.contains("@")) {
+            return IdentifierType.EMAIL;
+        }
+        if (identifier.startsWith("+") || isDigitsOnly(identifier)) {
+            return IdentifierType.PHONE_NUMBER;
+        }
+        return IdentifierType.USERNAME;
+    }
+
+    private boolean isDigitsOnly(String identifier) {
+        for (int i = 0; i < identifier.length(); i++) {
+            if (!Character.isDigit(identifier.charAt(i))) {
+                return false;
+            }
+        }
+        return !identifier.isEmpty();
+    }
+
     private String normalize(String value) {
         if (value == null) {
             return null;
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private enum IdentifierType {
+        USERNAME,
+        EMAIL,
+        PHONE_NUMBER
     }
 }
