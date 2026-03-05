@@ -51,6 +51,38 @@
   - `409` jika `username`/`email`/`phone_number` sudah dipakai
   - Semua error wajib wrapper JSON
 
+## Login Endpoint
+- Method & path: `POST /api/v1/auth/login`
+- Request body:
+  - `identifier` (required) dapat berupa `username` / `email` / `phone_number`
+  - `password` (required)
+- Aturan resolusi identifier:
+  - jika mengandung `@` -> email
+  - jika diawali `+` atau numeric penuh -> phone number
+  - selain itu -> username
+- Success response (`200`):
+```json
+{
+  "success": true,
+  "message": "Login berhasil",
+  "data": {
+    "access_token": "<jwt>",
+    "user": {
+      "user_id": "<uuid>",
+      "username": "...",
+      "display_name": "...",
+      "email": "...",
+      "phone_number": "...",
+      "role": "PELAJAR"
+    }
+  }
+}
+```
+- Error response:
+  - `401` jika identifier tidak ditemukan atau password salah
+  - `401` jika akun SSO-only (`password_hash` kosong) dengan message aman
+  - `403` jika akun ditemukan tapi `deleted_at` tidak null
+
 ## Internal Endpoint Contract
 - Semua endpoint internal Rust menggunakan prefix `/api/internal/...`.
 - Wajib header `x-api-key: <ENV_SECRET>`.

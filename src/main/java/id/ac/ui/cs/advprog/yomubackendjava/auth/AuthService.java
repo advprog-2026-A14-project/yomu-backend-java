@@ -44,6 +44,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthMapper authMapper;
+    private final IdentifierResolver identifierResolver;
     private final RustEngineClient rustEngineClient;
     private final OutboxService outboxService;
 
@@ -52,6 +53,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             AuthMapper authMapper,
+            IdentifierResolver identifierResolver,
             RustEngineClient rustEngineClient,
             OutboxService outboxService
     ) {
@@ -59,6 +61,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authMapper = authMapper;
+        this.identifierResolver = identifierResolver;
         this.rustEngineClient = rustEngineClient;
         this.outboxService = outboxService;
     }
@@ -100,10 +103,10 @@ public class AuthService {
             throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
         }
 
-        IdentifierType identifierType = resolveIdentifierType(identifier);
-        Optional<UserEntity> activeUserOpt = findActiveUser(identifierType, identifier);
+        IdentifierResolver.ResolvedIdentifier resolvedIdentifier = identifierResolver.resolve(identifier);
+        Optional<UserEntity> activeUserOpt = findActiveUser(resolvedIdentifier);
         if (activeUserOpt.isEmpty()) {
-            Optional<UserEntity> anyUser = findAnyUser(identifierType, identifier);
+            Optional<UserEntity> anyUser = findAnyUser(resolvedIdentifier);
             if (anyUser.isPresent() && anyUser.get().getDeletedAt() != null) {
                 throw new ForbiddenException(LOGIN_DELETED_MESSAGE);
             }
@@ -161,39 +164,20 @@ public class AuthService {
         }
     }
 
-    private Optional<UserEntity> findActiveUser(IdentifierType identifierType, String identifier) {
-        return switch (identifierType) {
-            case EMAIL -> userRepository.findByEmailAndDeletedAtIsNull(identifier);
-            case PHONE_NUMBER -> userRepository.findByPhoneNumberAndDeletedAtIsNull(identifier);
-            case USERNAME -> userRepository.findByUsernameAndDeletedAtIsNull(identifier);
+    private Optional<UserEntity> findActiveUser(IdentifierResolver.ResolvedIdentifier resolvedIdentifier) {
+        return switch (resolvedIdentifier.type()) {
+            case EMAIL -> userRepository.findByEmailAndDeletedAtIsNull(resolvedIdentifier.value());
+            case PHONE_NUMBER -> userRepository.findByPhoneNumberAndDeletedAtIsNull(resolvedIdentifier.value());
+            case USERNAME -> userRepository.findByUsernameAndDeletedAtIsNull(resolvedIdentifier.value());
         };
     }
 
-    private Optional<UserEntity> findAnyUser(IdentifierType identifierType, String identifier) {
-        return switch (identifierType) {
-            case EMAIL -> userRepository.findByEmail(identifier);
-            case PHONE_NUMBER -> userRepository.findByPhoneNumber(identifier);
-            case USERNAME -> userRepository.findByUsername(identifier);
+    private Optional<UserEntity> findAnyUser(IdentifierResolver.ResolvedIdentifier resolvedIdentifier) {
+        return switch (resolvedIdentifier.type()) {
+            case EMAIL -> userRepository.findByEmail(resolvedIdentifier.value());
+            case PHONE_NUMBER -> userRepository.findByPhoneNumber(resolvedIdentifier.value());
+            case USERNAME -> userRepository.findByUsername(resolvedIdentifier.value());
         };
-    }
-
-    private IdentifierType resolveIdentifierType(String identifier) {
-        if (identifier.contains("@")) {
-            return IdentifierType.EMAIL;
-        }
-        if (identifier.startsWith("+") || isDigitsOnly(identifier)) {
-            return IdentifierType.PHONE_NUMBER;
-        }
-        return IdentifierType.USERNAME;
-    }
-
-    private boolean isDigitsOnly(String identifier) {
-        for (int i = 0; i < identifier.length(); i++) {
-            if (!Character.isDigit(identifier.charAt(i))) {
-                return false;
-            }
-        }
-        return !identifier.isEmpty();
     }
 
     private String normalize(String value) {
@@ -202,11 +186,5 @@ public class AuthService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private enum IdentifierType {
-        USERNAME,
-        EMAIL,
-        PHONE_NUMBER
     }
 }
