@@ -50,21 +50,11 @@ public class UserService {
     public ApiResponse<UserDto> updateProfile(UpdateProfileRequest request) {
         String username = normalize(request.getUsername());
         String displayName = normalize(request.getDisplayName());
-        if (username == null && displayName == null) {
-            throw new BadRequestException(PROFILE_EMPTY_PAYLOAD_MESSAGE);
-        }
+        validateProfilePayload(username, displayName);
 
         UserEntity user = getCurrentActiveUser();
-        if (username != null && !username.equals(user.getUsername()) && usernameAlreadyUsed(username)) {
-            throw new ConflictException(USERNAME_USED_MESSAGE);
-        }
-
-        if (username != null) {
-            user.setUsername(username);
-        }
-        if (displayName != null) {
-            user.setDisplayName(displayName);
-        }
+        ensureUsernameAvailable(user, username);
+        applyProfileUpdates(user, username, displayName);
 
         UserEntity updatedUser = userRepository.saveAndFlush(user);
         return ApiResponse.success(PROFILE_UPDATED_SUCCESS_MESSAGE, userMapper.toUserDto(updatedUser));
@@ -87,27 +77,63 @@ public class UserService {
     public ApiResponse<UserDto> updateLoginIdentifiers(UpdateIdentifiersRequest request) {
         String email = normalize(request.getEmail());
         String phoneNumber = normalize(request.getPhoneNumber());
+        validateIdentifiersPayload(email, phoneNumber);
+
+        UserEntity user = getCurrentActiveUser();
+        ensureEmailAvailable(user, email);
+        ensurePhoneAvailable(user, phoneNumber);
+        applyIdentifierUpdates(user, email, phoneNumber);
+
+        UserEntity updatedUser = userRepository.saveAndFlush(user);
+        return ApiResponse.success(IDENTIFIERS_UPDATED_SUCCESS_MESSAGE, userMapper.toUserDto(updatedUser));
+    }
+
+    private void validateProfilePayload(String username, String displayName) {
+        if (username == null && displayName == null) {
+            throw new BadRequestException(PROFILE_EMPTY_PAYLOAD_MESSAGE);
+        }
+    }
+
+    private void validateIdentifiersPayload(String email, String phoneNumber) {
         if (email == null && phoneNumber == null) {
             throw new BadRequestException(IDENTIFIERS_EMPTY_PAYLOAD_MESSAGE);
         }
+    }
 
-        UserEntity user = getCurrentActiveUser();
+    private void ensureUsernameAvailable(UserEntity user, String username) {
+        if (username != null && !username.equals(user.getUsername()) && usernameAlreadyUsed(username)) {
+            throw new ConflictException(USERNAME_USED_MESSAGE);
+        }
+    }
+
+    private void ensureEmailAvailable(UserEntity user, String email) {
         if (email != null && !email.equals(user.getEmail()) && emailAlreadyUsed(email)) {
             throw new ConflictException(EMAIL_USED_MESSAGE);
         }
+    }
+
+    private void ensurePhoneAvailable(UserEntity user, String phoneNumber) {
         if (phoneNumber != null && !phoneNumber.equals(user.getPhoneNumber()) && phoneAlreadyUsed(phoneNumber)) {
             throw new ConflictException(PHONE_USED_MESSAGE);
         }
+    }
 
+    private void applyProfileUpdates(UserEntity user, String username, String displayName) {
+        if (username != null) {
+            user.setUsername(username);
+        }
+        if (displayName != null) {
+            user.setDisplayName(displayName);
+        }
+    }
+
+    private void applyIdentifierUpdates(UserEntity user, String email, String phoneNumber) {
         if (email != null) {
             user.setEmail(email);
         }
         if (phoneNumber != null) {
             user.setPhoneNumber(phoneNumber);
         }
-
-        UserEntity updatedUser = userRepository.saveAndFlush(user);
-        return ApiResponse.success(IDENTIFIERS_UPDATED_SUCCESS_MESSAGE, userMapper.toUserDto(updatedUser));
     }
 
     private UserEntity getCurrentActiveUser() {
