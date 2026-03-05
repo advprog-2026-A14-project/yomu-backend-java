@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.yomubackendjava.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
@@ -8,6 +9,7 @@ public class RegisterRequest {
     private String username;
 
     @NotBlank
+    @JsonProperty("display_name")
     private String displayName;
 
     @NotBlank
@@ -16,6 +18,7 @@ public class RegisterRequest {
     @Email
     private String email;
 
+    @JsonProperty("phone_number")
     private String phoneNumber;
 
     public String getUsername() {
