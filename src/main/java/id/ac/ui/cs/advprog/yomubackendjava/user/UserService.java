@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.yomubackendjava.user;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.UserDto;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
@@ -16,6 +17,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,6 +31,7 @@ public class UserService {
     private static final String PASSWORD_UPDATED_SUCCESS_MESSAGE = "Password berhasil diperbarui";
     private static final String IDENTIFIERS_UPDATED_SUCCESS_MESSAGE = "Login identifier berhasil diperbarui";
     private static final String ACCOUNT_DELETED_SUCCESS_MESSAGE = "Akun berhasil dihapus";
+    private static final String BATCH_SUCCESS_MESSAGE = "Batch pengguna berhasil diambil";
     private static final String UNAUTHORIZED_MESSAGE = "Unauthorized";
     private static final String DELETED_MESSAGE = "akun tidak aktif";
     private static final String PROFILE_EMPTY_PAYLOAD_MESSAGE = "minimal username atau display_name harus diisi";
@@ -34,6 +40,9 @@ public class UserService {
     private static final String EMAIL_USED_MESSAGE = "email sudah digunakan";
     private static final String PHONE_USED_MESSAGE = "phone_number sudah digunakan";
     private static final String CURRENT_PASSWORD_INVALID_MESSAGE = "current_password salah";
+    private static final String IDS_REQUIRED_MESSAGE = "ids wajib diisi";
+    private static final String IDS_MAX_MESSAGE = "maksimal 100 ids";
+    private static final String IDS_INVALID_UUID_MESSAGE = "ids harus UUID valid";
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
@@ -95,6 +104,61 @@ public class UserService {
         user.setDeletedAt(Instant.now());
         userRepository.saveAndFlush(user);
         return ApiResponse.success(ACCOUNT_DELETED_SUCCESS_MESSAGE);
+    }
+
+    public ApiResponse<UserBatchResponseData> batchUsers(String idsParam) {
+        List<UUID> userIds = parseBatchIds(idsParam);
+        List<UserEntity> foundUsers = userRepository.findByUserIdInAndDeletedAtIsNull(userIds);
+        Map<UUID, UserEntity> foundById = new HashMap<>();
+        for (UserEntity foundUser : foundUsers) {
+            foundById.put(foundUser.getUserId(), foundUser);
+        }
+
+        List<UserBatchItem> users = new ArrayList<>();
+        List<String> notFoundIds = new ArrayList<>();
+        for (UUID userId : userIds) {
+            UserEntity found = foundById.get(userId);
+            if (found == null) {
+                notFoundIds.add(userId.toString());
+            } else {
+                users.add(new UserBatchItem(
+                        found.getUserId().toString(),
+                        found.getUsername(),
+                        found.getDisplayName()
+                ));
+            }
+        }
+
+        return ApiResponse.success(BATCH_SUCCESS_MESSAGE, new UserBatchResponseData(users, notFoundIds));
+    }
+
+    private List<UUID> parseBatchIds(String idsParam) {
+        String normalized = normalize(idsParam);
+        if (normalized == null) {
+            throw new BadRequestException(IDS_REQUIRED_MESSAGE);
+        }
+
+        String[] rawIds = normalized.split(",");
+        if (rawIds.length == 0) {
+            throw new BadRequestException(IDS_REQUIRED_MESSAGE);
+        }
+        if (rawIds.length > 100) {
+            throw new BadRequestException(IDS_MAX_MESSAGE);
+        }
+
+        List<UUID> parsedIds = new ArrayList<>();
+        for (String rawId : rawIds) {
+            String trimmed = normalize(rawId);
+            if (trimmed == null) {
+                throw new BadRequestException(IDS_INVALID_UUID_MESSAGE);
+            }
+            try {
+                parsedIds.add(UUID.fromString(trimmed));
+            } catch (IllegalArgumentException ex) {
+                throw new BadRequestException(IDS_INVALID_UUID_MESSAGE);
+            }
+        }
+        return parsedIds;
     }
 
     private void validateProfilePayload(String username, String displayName) {
@@ -176,5 +240,18 @@ public class UserService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    public record UserBatchResponseData(
+            List<UserBatchItem> users,
+            @JsonProperty("not_found_ids") List<String> notFoundIds
+    ) {
+    }
+
+    public record UserBatchItem(
+            @JsonProperty("user_id") String userId,
+            String username,
+            @JsonProperty("display_name") String displayName
+    ) {
     }
 }

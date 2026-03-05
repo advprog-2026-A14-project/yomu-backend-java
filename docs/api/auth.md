@@ -139,6 +139,31 @@
   - `401` jika token tidak ada/tidak valid atau user tidak ditemukan
   - `403` jika akun sudah tidak aktif (`deleted_at` tidak null)
 
+## Users Batch Endpoint
+- Method & path: `GET /api/v1/users/batch?ids=<uuid1>,<uuid2>,...`
+- Ketentuan:
+  - maksimal 100 id per request
+  - setiap id wajib UUID valid
+- Success response (`200`):
+```json
+{
+  "success": true,
+  "message": "Batch pengguna berhasil diambil",
+  "data": {
+    "users": [
+      {
+        "user_id": "<uuid>",
+        "username": "...",
+        "display_name": "..."
+      }
+    ],
+    "not_found_ids": ["<uuid-not-found>"]
+  }
+}
+```
+- Error response:
+  - `400` jika `ids` kosong / invalid UUID / jumlah id > 100
+
 ## Update Account Endpoints
 - Method & path: `PATCH /api/v1/users/me`
   - Request body: `{"username": "...", "display_name": "..."}` (minimal salah satu field harus diisi)
