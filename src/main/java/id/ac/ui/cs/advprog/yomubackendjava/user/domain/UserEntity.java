@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.yomubackendjava.user.domain;
 
+import id.ac.ui.cs.advprog.yomubackendjava.common.persistence.EntityTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,40 +21,43 @@ public class UserEntity {
     @Id
     @GeneratedValue
     @UuidGenerator
+    @Column(name = "user_id")
     private UUID userId;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "username", nullable = false, unique = true)
     private String username;
 
-    @Column(nullable = false)
+    @Column(name = "display_name", nullable = false)
     private String displayName;
 
-    @Column(unique = true)
+    @Column(name = "email", unique = true)
     private String email;
 
-    @Column(unique = true)
+    @Column(name = "phone_number", unique = true)
     private String phoneNumber;
 
+    @Column(name = "password_hash")
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "role", nullable = false)
     private Role role;
 
-    @Column(unique = true)
+    @Column(name = "google_sub", unique = true)
     private String googleSub;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "deleted_at")
     private Instant deletedAt;
 
     @PrePersist
     public void onCreate() {
-        Instant now = Instant.now();
+        Instant now = EntityTime.now();
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -62,7 +66,7 @@ public class UserEntity {
 
     @PreUpdate
     public void onUpdate() {
-        this.updatedAt = Instant.now();
+        this.updatedAt = EntityTime.now();
     }
 
     public UUID getUserId() {

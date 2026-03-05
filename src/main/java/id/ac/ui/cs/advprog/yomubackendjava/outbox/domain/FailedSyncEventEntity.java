@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.yomubackendjava.outbox.domain;
 
+import id.ac.ui.cs.advprog.yomubackendjava.common.persistence.EntityTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,35 +19,38 @@ import java.time.Instant;
 public class FailedSyncEventEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "event_id")
     private Long eventId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "event_type", nullable = false)
     private SyncEventType eventType;
 
-    @Column(nullable = false, length = 4000)
+    @Column(name = "payload_json", nullable = false, length = 4000)
     private String payloadJson;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private SyncEventStatus status;
 
-    @Column(nullable = false)
-    private int retryCount;
+    @Column(name = "retry_count", nullable = false)
+    private int retryCount = 0;
 
+    @Column(name = "last_error")
     private String lastError;
 
+    @Column(name = "next_retry_at")
     private Instant nextRetryAt;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
     @PrePersist
     public void onCreate() {
-        Instant now = Instant.now();
+        Instant now = EntityTime.now();
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -55,7 +59,7 @@ public class FailedSyncEventEntity {
 
     @PreUpdate
     public void onUpdate() {
-        this.updatedAt = Instant.now();
+        this.updatedAt = EntityTime.now();
     }
 
     public Long getEventId() {
