@@ -46,7 +46,7 @@ public class UserService {
     }
 
     public ApiResponse<UserDto> me() {
-        return ApiResponse.success(ME_SUCCESS_MESSAGE, userMapper.toUserDto(getCurrentActiveUser()));
+        return ApiResponse.success(ME_SUCCESS_MESSAGE, userMapper.toUserDto(assertActiveUser()));
     }
 
     public ApiResponse<UserDto> updateProfile(UpdateProfileRequest request) {
@@ -54,7 +54,7 @@ public class UserService {
         String displayName = normalize(request.getDisplayName());
         validateProfilePayload(username, displayName);
 
-        UserEntity user = getCurrentActiveUser();
+        UserEntity user = assertActiveUser();
         ensureUsernameAvailable(user, username);
         applyProfileUpdates(user, username, displayName);
 
@@ -63,7 +63,7 @@ public class UserService {
     }
 
     public ApiResponse<Void> updatePassword(UpdatePasswordRequest request) {
-        UserEntity user = getCurrentActiveUser();
+        UserEntity user = assertActiveUser();
         if (user.getPasswordHash() != null) {
             String currentPassword = normalize(request.getCurrentPassword());
             if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
@@ -81,7 +81,7 @@ public class UserService {
         String phoneNumber = normalize(request.getPhoneNumber());
         validateIdentifiersPayload(email, phoneNumber);
 
-        UserEntity user = getCurrentActiveUser();
+        UserEntity user = assertActiveUser();
         ensureEmailAvailable(user, email);
         ensurePhoneAvailable(user, phoneNumber);
         applyIdentifierUpdates(user, email, phoneNumber);
@@ -91,7 +91,7 @@ public class UserService {
     }
 
     public ApiResponse<Void> deleteAccount() {
-        UserEntity user = getCurrentActiveUser();
+        UserEntity user = assertActiveUser();
         user.setDeletedAt(Instant.now());
         userRepository.saveAndFlush(user);
         return ApiResponse.success(ACCOUNT_DELETED_SUCCESS_MESSAGE);
@@ -145,7 +145,7 @@ public class UserService {
         }
     }
 
-    private UserEntity getCurrentActiveUser() {
+    private UserEntity assertActiveUser() {
         UUID userId = CurrentUser.userId().orElseThrow(() -> new UnauthorizedException(UNAUTHORIZED_MESSAGE));
         Optional<UserEntity> activeUser = userRepository.findByUserIdAndDeletedAtIsNull(userId);
         if (activeUser.isPresent()) {

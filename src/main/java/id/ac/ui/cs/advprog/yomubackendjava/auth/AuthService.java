@@ -105,16 +105,7 @@ public class AuthService {
         }
 
         IdentifierResolver.ResolvedIdentifier resolvedIdentifier = identifierResolver.resolve(identifier);
-        Optional<UserEntity> activeUserOpt = findActiveUser(resolvedIdentifier);
-        if (activeUserOpt.isEmpty()) {
-            Optional<UserEntity> anyUser = findAnyUser(resolvedIdentifier);
-            if (anyUser.isPresent() && anyUser.get().getDeletedAt() != null) {
-                throw new ForbiddenException(LOGIN_DELETED_MESSAGE);
-            }
-            throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
-        }
-
-        UserEntity user = activeUserOpt.get();
+        UserEntity user = assertActiveUserForLogin(resolvedIdentifier);
         if (user.getPasswordHash() == null) {
             throw new UnauthorizedException(LOGIN_SSO_ONLY_MESSAGE);
         }
@@ -179,6 +170,19 @@ public class AuthService {
             case PHONE_NUMBER -> userRepository.findByPhoneNumber(resolvedIdentifier.value());
             case USERNAME -> userRepository.findByUsername(resolvedIdentifier.value());
         };
+    }
+
+    private UserEntity assertActiveUserForLogin(IdentifierResolver.ResolvedIdentifier resolvedIdentifier) {
+        Optional<UserEntity> activeUserOpt = findActiveUser(resolvedIdentifier);
+        if (activeUserOpt.isPresent()) {
+            return activeUserOpt.get();
+        }
+
+        Optional<UserEntity> anyUser = findAnyUser(resolvedIdentifier);
+        if (anyUser.isPresent() && anyUser.get().getDeletedAt() != null) {
+            throw new ForbiddenException(LOGIN_DELETED_MESSAGE);
+        }
+        throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
     }
 
     private String normalize(String value) {
