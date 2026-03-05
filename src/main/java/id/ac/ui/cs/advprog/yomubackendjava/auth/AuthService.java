@@ -52,6 +52,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final UserMapper userMapper;
     private final IdentifierResolver identifierResolver;
+    private final UsernameGenerator usernameGenerator;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
     private final RustEngineClient rustEngineClient;
     private final OutboxService outboxService;
@@ -62,6 +63,7 @@ public class AuthService {
             JwtService jwtService,
             UserMapper userMapper,
             IdentifierResolver identifierResolver,
+            UsernameGenerator usernameGenerator,
             GoogleIdTokenVerifier googleIdTokenVerifier,
             RustEngineClient rustEngineClient,
             OutboxService outboxService
@@ -71,6 +73,7 @@ public class AuthService {
         this.jwtService = jwtService;
         this.userMapper = userMapper;
         this.identifierResolver = identifierResolver;
+        this.usernameGenerator = usernameGenerator;
         this.googleIdTokenVerifier = googleIdTokenVerifier;
         this.rustEngineClient = rustEngineClient;
         this.outboxService = outboxService;
@@ -213,7 +216,7 @@ public class AuthService {
 
         String username = requestUsername != null
                 ? requestUsername
-                : generateUsername(emailFromGoogle, googleSub);
+                : usernameGenerator.generateFromEmail(emailFromGoogle);
         String displayName = resolveGoogleDisplayName(request, profile, username);
 
         UserEntity user = new UserEntity();
@@ -226,21 +229,6 @@ public class AuthService {
         return user;
     }
 
-    private String generateUsername(String emailFromGoogle, String googleSub) {
-        String base = "google_user";
-        if (emailFromGoogle != null && emailFromGoogle.contains("@")) {
-            base = emailFromGoogle.substring(0, emailFromGoogle.indexOf('@'));
-        }
-        String normalizedBase = normalizeUsernameBase(base);
-        String candidate = normalizedBase;
-        int suffix = 1;
-        while (userRepository.findByUsername(candidate).isPresent()) {
-            candidate = normalizedBase + suffix;
-            suffix++;
-        }
-        return candidate;
-    }
-
     private String resolveGoogleDisplayName(GoogleLoginRequest request, GoogleProfile profile, String username) {
         String requestDisplayName = normalize(request.getDisplayName());
         if (requestDisplayName != null) {
@@ -251,14 +239,6 @@ public class AuthService {
             return googleName;
         }
         return username;
-    }
-
-    private String normalizeUsernameBase(String rawBase) {
-        String base = rawBase == null ? "google_user" : rawBase.toLowerCase();
-        String sanitized = base.replaceAll("[^a-z0-9_]", "_");
-        String compact = sanitized.replaceAll("_+", "_");
-        String trimmed = compact.replaceAll("^_+|_+$", "");
-        return trimmed.isBlank() ? "google_user" : trimmed;
     }
 
     private ApiResponse<AuthResponseData> buildGoogleLoginResponse(UserEntity user, boolean isNewUser) {
