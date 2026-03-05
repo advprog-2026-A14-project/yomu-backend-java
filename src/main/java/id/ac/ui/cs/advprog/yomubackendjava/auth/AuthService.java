@@ -1,8 +1,11 @@
 package id.ac.ui.cs.advprog.yomubackendjava.auth;
 
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.AuthResponseData;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.GoogleLoginRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.RegisterRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.google.GoogleIdTokenVerifier;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.google.GoogleProfile;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
@@ -38,6 +41,9 @@ public class AuthService {
     private static final String LOGIN_INVALID_CREDENTIALS_MESSAGE = "identifier atau password salah";
     private static final String LOGIN_DELETED_MESSAGE = "akun tidak aktif";
     private static final String LOGIN_SSO_ONLY_MESSAGE = "akun menggunakan metode login lain";
+    private static final String GOOGLE_LOGIN_SUCCESS_MESSAGE = "Login Google berhasil";
+    private static final String GOOGLE_TOKEN_INVALID_MESSAGE = "id_token tidak valid";
+    private static final String GOOGLE_SUB_INVALID_MESSAGE = "google_sub tidak valid";
     private static final int RUST_SYNC_CREATED_STATUS = 201;
     private static final int RUST_SYNC_CONFLICT_STATUS = 409;
 
@@ -46,6 +52,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final UserMapper userMapper;
     private final IdentifierResolver identifierResolver;
+    private final GoogleIdTokenVerifier googleIdTokenVerifier;
     private final RustEngineClient rustEngineClient;
     private final OutboxService outboxService;
 
@@ -55,6 +62,7 @@ public class AuthService {
             JwtService jwtService,
             UserMapper userMapper,
             IdentifierResolver identifierResolver,
+            GoogleIdTokenVerifier googleIdTokenVerifier,
             RustEngineClient rustEngineClient,
             OutboxService outboxService
     ) {
@@ -63,6 +71,7 @@ public class AuthService {
         this.jwtService = jwtService;
         this.userMapper = userMapper;
         this.identifierResolver = identifierResolver;
+        this.googleIdTokenVerifier = googleIdTokenVerifier;
         this.rustEngineClient = rustEngineClient;
         this.outboxService = outboxService;
     }
@@ -118,6 +127,34 @@ public class AuthService {
         return ApiResponse.success(LOGIN_SUCCESS_MESSAGE, responseData);
     }
 
+    public ApiResponse<AuthResponseData> googleLogin(GoogleLoginRequest request) {
+        GoogleProfile profile = verifyGoogleToken(request.getIdToken());
+        String googleSub = normalize(profile.googleSub());
+        if (googleSub == null) {
+            throw new BadRequestException(GOOGLE_SUB_INVALID_MESSAGE);
+        }
+
+        Optional<UserEntity> existingUserOpt = userRepository.findByGoogleSub(googleSub);
+        if (existingUserOpt.isPresent()) {
+            UserEntity existingUser = existingUserOpt.get();
+            if (existingUser.getDeletedAt() != null) {
+                throw new ForbiddenException(LOGIN_DELETED_MESSAGE);
+            }
+            return buildGoogleLoginResponse(existingUser, false);
+        }
+
+        UserEntity newUser = buildNewGoogleUser(request, profile, googleSub);
+        UserEntity savedUser;
+        try {
+            savedUser = userRepository.saveAndFlush(newUser);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ConflictException(GENERIC_CONFLICT_MESSAGE);
+        }
+
+        syncUserToRust(savedUser.getUserId());
+        return buildGoogleLoginResponse(savedUser, true);
+    }
+
     private void syncUserToRust(UUID userId) {
         try {
             RustEngineClient.SyncResult syncResult = rustEngineClient.syncUser(userId);
@@ -154,6 +191,80 @@ public class AuthService {
         if (phoneNumber != null && userRepository.findByPhoneNumberAndDeletedAtIsNull(phoneNumber).isPresent()) {
             throw new ConflictException(PHONE_USED_MESSAGE);
         }
+    }
+
+    private GoogleProfile verifyGoogleToken(String idToken) {
+        try {
+            return googleIdTokenVerifier.verify(idToken);
+        } catch (RuntimeException ex) {
+            throw new BadRequestException(GOOGLE_TOKEN_INVALID_MESSAGE);
+        }
+    }
+
+    private UserEntity buildNewGoogleUser(GoogleLoginRequest request, GoogleProfile profile, String googleSub) {
+        String requestUsername = normalize(request.getUsername());
+        String emailFromGoogle = normalize(profile.email());
+        if (requestUsername != null && userRepository.findByUsernameAndDeletedAtIsNull(requestUsername).isPresent()) {
+            throw new ConflictException(USERNAME_USED_MESSAGE);
+        }
+        if (emailFromGoogle != null && userRepository.findByEmailAndDeletedAtIsNull(emailFromGoogle).isPresent()) {
+            throw new ConflictException(EMAIL_USED_MESSAGE);
+        }
+
+        String username = requestUsername != null
+                ? requestUsername
+                : generateUsername(emailFromGoogle, googleSub);
+        String displayName = resolveGoogleDisplayName(request, profile, username);
+
+        UserEntity user = new UserEntity();
+        user.setUsername(username);
+        user.setDisplayName(displayName);
+        user.setEmail(emailFromGoogle);
+        user.setRole(Role.PELAJAR);
+        user.setPasswordHash(null);
+        user.setGoogleSub(googleSub);
+        return user;
+    }
+
+    private String generateUsername(String emailFromGoogle, String googleSub) {
+        String base = "google_user";
+        if (emailFromGoogle != null && emailFromGoogle.contains("@")) {
+            base = emailFromGoogle.substring(0, emailFromGoogle.indexOf('@'));
+        }
+        String normalizedBase = normalizeUsernameBase(base);
+        String candidate = normalizedBase;
+        int suffix = 1;
+        while (userRepository.findByUsername(candidate).isPresent()) {
+            candidate = normalizedBase + suffix;
+            suffix++;
+        }
+        return candidate;
+    }
+
+    private String resolveGoogleDisplayName(GoogleLoginRequest request, GoogleProfile profile, String username) {
+        String requestDisplayName = normalize(request.getDisplayName());
+        if (requestDisplayName != null) {
+            return requestDisplayName;
+        }
+        String googleName = normalize(profile.name());
+        if (googleName != null) {
+            return googleName;
+        }
+        return username;
+    }
+
+    private String normalizeUsernameBase(String rawBase) {
+        String base = rawBase == null ? "google_user" : rawBase.toLowerCase();
+        String sanitized = base.replaceAll("[^a-z0-9_]", "_");
+        String compact = sanitized.replaceAll("_+", "_");
+        String trimmed = compact.replaceAll("^_+|_+$", "");
+        return trimmed.isBlank() ? "google_user" : trimmed;
+    }
+
+    private ApiResponse<AuthResponseData> buildGoogleLoginResponse(UserEntity user, boolean isNewUser) {
+        String accessToken = jwtService.generateToken(user.getUserId(), user.getRole());
+        AuthResponseData responseData = new AuthResponseData(isNewUser, accessToken, userMapper.toUserDto(user));
+        return ApiResponse.success(GOOGLE_LOGIN_SUCCESS_MESSAGE, responseData);
     }
 
     private Optional<UserEntity> findActiveUser(IdentifierResolver.ResolvedIdentifier resolvedIdentifier) {

@@ -83,6 +83,40 @@
   - `401` jika akun SSO-only (`password_hash` kosong) dengan message aman
   - `403` jika akun ditemukan tapi `deleted_at` tidak null
 
+## Google Login Endpoint
+- Method & path: `POST /api/v1/auth/google`
+- Request body:
+  - `id_token` (required)
+  - `username` (optional)
+  - `display_name` (optional)
+- Behavior:
+  - `id_token` diverifikasi lewat `GoogleIdTokenVerifier`
+  - jika user sudah ada berdasarkan `google_sub`: login biasa, `is_new_user=false`
+  - jika user baru: buat akun `PELAJAR`, `password_hash=null`, simpan `google_sub`, lalu coba sync ke Rust
+  - jika sync Rust gagal/timeout: tetap `200`, event outbox `failed_sync_events` dibuat
+- Success response (`200`):
+```json
+{
+  "success": true,
+  "message": "Login Google berhasil",
+  "data": {
+    "is_new_user": true,
+    "access_token": "<jwt>",
+    "user": {
+      "user_id": "<uuid>",
+      "username": "...",
+      "display_name": "...",
+      "email": "...",
+      "phone_number": null,
+      "role": "PELAJAR"
+    }
+  }
+}
+```
+- Error response:
+  - `400` untuk `id_token` tidak valid
+  - `409` jika username/email bentrok pada pembuatan user baru
+
 ## Me Endpoint
 - Method & path: `GET /api/v1/users/me`
 - Wajib header `Authorization: Bearer <JWT>`

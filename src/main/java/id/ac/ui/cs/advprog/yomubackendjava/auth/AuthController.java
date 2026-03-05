@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.auth;
 
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.AuthResponseData;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.GoogleLoginRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.LoginRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.RegisterRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
@@ -28,5 +29,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponseData>> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.loginLocal(request));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<AuthResponseData>> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        return ResponseEntity.ok(authService.googleLogin(request));
     }
 }
