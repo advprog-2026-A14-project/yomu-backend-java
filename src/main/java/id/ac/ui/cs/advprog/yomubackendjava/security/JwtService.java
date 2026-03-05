@@ -6,7 +6,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -24,12 +23,9 @@ public class JwtService {
     private final long ttlSeconds;
     private final SecretKey signingKey;
 
-    public JwtService(
-            @Value("${jwt.secret:}") String secret,
-            @Value("${jwt.ttl-seconds:86400}") long ttlSeconds
-    ) {
-        this.secret = secret;
-        this.ttlSeconds = ttlSeconds;
+    public JwtService(JwtProperties jwtProperties) {
+        this.secret = jwtProperties.secret();
+        this.ttlSeconds = jwtProperties.ttlSeconds();
         if (secret == null || secret.length() < MIN_SECRET_LENGTH) {
             throw new IllegalStateException("JWT secret must be at least 32 characters");
         }

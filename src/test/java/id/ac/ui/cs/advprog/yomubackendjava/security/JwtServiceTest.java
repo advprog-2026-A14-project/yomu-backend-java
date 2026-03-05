@@ -14,7 +14,7 @@ class JwtServiceTest {
 
     @Test
     void generateThenParseShouldKeepSubjectAndRole() {
-        JwtService jwtService = new JwtService(TEST_SECRET, 3600);
+        JwtService jwtService = new JwtService(new JwtProperties(TEST_SECRET, 3600));
         UUID userId = UUID.randomUUID();
 
         String token = jwtService.generateToken(userId, Role.PELAJAR);
@@ -26,7 +26,7 @@ class JwtServiceTest {
 
     @Test
     void generatedTokenShouldHaveExpAfterIat() {
-        JwtService jwtService = new JwtService(TEST_SECRET, 3600);
+        JwtService jwtService = new JwtService(new JwtProperties(TEST_SECRET, 3600));
 
         JwtService.JwtClaims claims = jwtService.parseAndValidate(
                 jwtService.generateToken(UUID.randomUUID(), Role.ADMIN)
@@ -37,7 +37,7 @@ class JwtServiceTest {
 
     @Test
     void expiredTokenShouldBeRejected() {
-        JwtService jwtService = new JwtService(TEST_SECRET, -1);
+        JwtService jwtService = new JwtService(new JwtProperties(TEST_SECRET, -1));
 
         String token = jwtService.generateToken(UUID.randomUUID(), Role.PELAJAR);
 
