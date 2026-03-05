@@ -22,14 +22,16 @@ public class UserEntity {
     @UuidGenerator
     private UUID userId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String username;
 
     @Column(nullable = false)
     private String displayName;
 
+    @Column(unique = true)
     private String email;
 
+    @Column(unique = true)
     private String phoneNumber;
 
     private String passwordHash;
@@ -38,6 +40,7 @@ public class UserEntity {
     @Column(nullable = false)
     private Role role;
 
+    @Column(unique = true)
     private String googleSub;
 
     @Column(nullable = false)
