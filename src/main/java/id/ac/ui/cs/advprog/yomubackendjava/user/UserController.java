@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.user.dto.UpdateIdentifiersRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.user.dto.UpdatePasswordRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.user.dto.UpdateProfileRequest;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -40,5 +41,10 @@ public class UserController {
     @PatchMapping("/me/login-identifiers")
     public ResponseEntity<ApiResponse<UserDto>> updateLoginIdentifiers(@Valid @RequestBody UpdateIdentifiersRequest request) {
         return ResponseEntity.ok(userService.updateLoginIdentifiers(request));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> deleteAccount() {
+        return ResponseEntity.ok(userService.deleteAccount());
     }
 }

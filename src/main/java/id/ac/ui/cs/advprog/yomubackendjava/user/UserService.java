@@ -15,6 +15,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +25,7 @@ public class UserService {
     private static final String PROFILE_UPDATED_SUCCESS_MESSAGE = "Profil berhasil diperbarui";
     private static final String PASSWORD_UPDATED_SUCCESS_MESSAGE = "Password berhasil diperbarui";
     private static final String IDENTIFIERS_UPDATED_SUCCESS_MESSAGE = "Login identifier berhasil diperbarui";
+    private static final String ACCOUNT_DELETED_SUCCESS_MESSAGE = "Akun berhasil dihapus";
     private static final String UNAUTHORIZED_MESSAGE = "Unauthorized";
     private static final String DELETED_MESSAGE = "akun tidak aktif";
     private static final String PROFILE_EMPTY_PAYLOAD_MESSAGE = "minimal username atau display_name harus diisi";
@@ -86,6 +88,13 @@ public class UserService {
 
         UserEntity updatedUser = userRepository.saveAndFlush(user);
         return ApiResponse.success(IDENTIFIERS_UPDATED_SUCCESS_MESSAGE, userMapper.toUserDto(updatedUser));
+    }
+
+    public ApiResponse<Void> deleteAccount() {
+        UserEntity user = getCurrentActiveUser();
+        user.setDeletedAt(Instant.now());
+        userRepository.saveAndFlush(user);
+        return ApiResponse.success(ACCOUNT_DELETED_SUCCESS_MESSAGE);
     }
 
     private void validateProfilePayload(String username, String displayName) {

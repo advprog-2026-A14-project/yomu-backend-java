@@ -121,6 +121,15 @@
   - Error: `400` jika payload kosong, `409` jika email/phone sudah dipakai
   - Success `200`: wrapper + data user terbaru
 
+## Delete Account Endpoint
+- Method & path: `DELETE /api/v1/users/me`
+- Behavior:
+  - akun di-soft-delete dengan mengisi `deleted_at`
+  - response sukses wrapper tanpa `data`
+- Dampak setelah delete:
+  - `GET /api/v1/users/me` -> `403`
+  - `POST /api/v1/auth/login` -> `403` (`akun tidak aktif`)
+
 ## Internal Endpoint Contract
 - Semua endpoint internal Rust menggunakan prefix `/api/internal/...`.
 - Wajib header `x-api-key: <ENV_SECRET>`.
