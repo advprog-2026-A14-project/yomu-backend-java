@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.function.Predicate;
 
 @Service
 public class OutboxRetryService {
@@ -24,6 +25,7 @@ public class OutboxRetryService {
     private static final String RETRY_REQUEST_REQUIRED_MESSAGE = "event_ids atau retry_all wajib diisi";
     private static final String USER_ID_PAYLOAD_INVALID_MESSAGE = "payload user_id tidak valid";
     private static final Pattern USER_ID_PATTERN = Pattern.compile("\"user_id\"\\s*:\\s*\"([^\"]+)\"");
+    private static final List<SyncEventStatus> RETRYABLE_STATUSES = List.of(SyncEventStatus.FAILED, SyncEventStatus.PENDING);
 
     private final FailedSyncEventRepository failedSyncEventRepository;
     private final RustEngineClient rustEngineClient;
@@ -37,9 +39,7 @@ public class OutboxRetryService {
     }
 
     public FailedSyncEventsData listFailedSyncEvents() {
-        List<FailedSyncEventEntity> events = failedSyncEventRepository.findTop100ByStatusInOrderByCreatedAtAsc(
-                List.of(SyncEventStatus.FAILED, SyncEventStatus.PENDING)
-        );
+        List<FailedSyncEventEntity> events = failedSyncEventRepository.findTop100ByStatusInOrderByCreatedAtAsc(RETRYABLE_STATUSES);
         List<FailedSyncEventView> mapped = new ArrayList<>();
         for (FailedSyncEventEntity event : events) {
             mapped.add(toView(event));
@@ -48,10 +48,40 @@ public class OutboxRetryService {
     }
 
     public RetrySummary retryEvents(Collection<Long> eventIds, boolean retryAll) {
-        List<FailedSyncEventEntity> events = resolveEvents(eventIds, retryAll);
+        return retryEventsInternal(resolveEvents(eventIds, retryAll), event -> true);
+    }
+
+    public int retryFailedFromScheduler(int maxRetry) {
+        RetrySummary summary = retryEventsInternal(
+                failedSyncEventRepository.findTop100ByStatusInOrderByCreatedAtAsc(RETRYABLE_STATUSES),
+                event -> event.getRetryCount() < maxRetry
+        );
+        return summary.processedCount();
+    }
+
+    private List<FailedSyncEventEntity> resolveEvents(Collection<Long> eventIds, boolean retryAll) {
+        if (retryAll) {
+            return failedSyncEventRepository.findTop100ByStatusInOrderByCreatedAtAsc(RETRYABLE_STATUSES);
+        }
+
+        if (eventIds == null || eventIds.isEmpty()) {
+            throw new BadRequestException(RETRY_REQUEST_REQUIRED_MESSAGE);
+        }
+        return failedSyncEventRepository.findAllById(eventIds);
+    }
+
+    private RetrySummary retryEventsInternal(
+            List<FailedSyncEventEntity> events,
+            Predicate<FailedSyncEventEntity> predicate
+    ) {
+        int processedCount = 0;
         int doneCount = 0;
         int failedCount = 0;
         for (FailedSyncEventEntity event : events) {
+            if (!predicate.test(event)) {
+                continue;
+            }
+            processedCount++;
             SyncEventStatus result = retryOneEvent(event);
             if (result == SyncEventStatus.DONE) {
                 doneCount++;
@@ -59,34 +89,7 @@ public class OutboxRetryService {
                 failedCount++;
             }
         }
-        return new RetrySummary(events.size(), doneCount, failedCount);
-    }
-
-    public int retryFailedFromScheduler(int maxRetry) {
-        List<FailedSyncEventEntity> events = failedSyncEventRepository.findTop100ByStatusInOrderByCreatedAtAsc(
-                List.of(SyncEventStatus.FAILED, SyncEventStatus.PENDING)
-        );
-        int retriedCount = 0;
-        for (FailedSyncEventEntity event : events) {
-            if (event.getRetryCount() < maxRetry) {
-                retryOneEvent(event);
-                retriedCount++;
-            }
-        }
-        return retriedCount;
-    }
-
-    private List<FailedSyncEventEntity> resolveEvents(Collection<Long> eventIds, boolean retryAll) {
-        if (retryAll) {
-            return failedSyncEventRepository.findTop100ByStatusInOrderByCreatedAtAsc(
-                    List.of(SyncEventStatus.FAILED, SyncEventStatus.PENDING)
-            );
-        }
-
-        if (eventIds == null || eventIds.isEmpty()) {
-            throw new BadRequestException(RETRY_REQUEST_REQUIRED_MESSAGE);
-        }
-        return failedSyncEventRepository.findAllById(eventIds);
+        return new RetrySummary(processedCount, doneCount, failedCount);
     }
 
     private SyncEventStatus retryOneEvent(FailedSyncEventEntity event) {
