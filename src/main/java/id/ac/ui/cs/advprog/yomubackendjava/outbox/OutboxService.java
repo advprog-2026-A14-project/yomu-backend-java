@@ -19,10 +19,14 @@ public class OutboxService {
     public void recordUserSyncFailure(UUID userId, String lastError) {
         FailedSyncEventEntity event = new FailedSyncEventEntity();
         event.setEventType(SyncEventType.USER_SYNC);
-        event.setPayloadJson("{\"user_id\":\"" + userId + "\"}");
+        event.setPayloadJson(buildPayloadJson(userId));
         event.setStatus(SyncEventStatus.FAILED);
         event.setRetryCount(0);
         event.setLastError(lastError);
         failedSyncEventRepository.save(event);
+    }
+
+    private String buildPayloadJson(UUID userId) {
+        return "{\"user_id\":\"" + userId + "\"}";
     }
 }

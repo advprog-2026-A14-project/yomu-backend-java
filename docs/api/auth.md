@@ -58,9 +58,13 @@
 
 ## Fault Tolerance Register Flow
 - Java menyimpan user terlebih dahulu.
-- Java mencoba sinkronisasi ke Rust.
+- Setelah user tersimpan, Java mencoba sinkronisasi ke Rust:
+  - `POST {RUST_ENGINE_BASE_URL}/api/internal/users/sync`
+  - header: `x-api-key: INTERNAL_API_KEY`
+  - body: `{"user_id":"<uuid>"}`
 - Jika sinkronisasi gagal/timeout:
   - transaksi simpan user tidak di-rollback
   - tetap return `200`
-  - simpan event outbox ke `failed_sync_events`
+  - simpan event outbox ke `failed_sync_events` dengan `event_type=USER_SYNC`, `status=FAILED`
   - tulis log level `ERROR`
+- Jika Rust mengembalikan `409 conflict`, perlakukan sebagai idempotent success (tanpa outbox baru).
