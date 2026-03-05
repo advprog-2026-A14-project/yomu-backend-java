@@ -83,6 +83,28 @@
   - `401` jika akun SSO-only (`password_hash` kosong) dengan message aman
   - `403` jika akun ditemukan tapi `deleted_at` tidak null
 
+## Me Endpoint
+- Method & path: `GET /api/v1/users/me`
+- Wajib header `Authorization: Bearer <JWT>`
+- Success response (`200`):
+```json
+{
+  "success": true,
+  "message": "Profil pengguna berhasil diambil",
+  "data": {
+    "user_id": "<uuid>",
+    "username": "...",
+    "display_name": "...",
+    "email": "...",
+    "phone_number": "...",
+    "role": "PELAJAR"
+  }
+}
+```
+- Error response:
+  - `401` jika token tidak ada/tidak valid atau user tidak ditemukan
+  - `403` jika akun sudah tidak aktif (`deleted_at` tidak null)
+
 ## Internal Endpoint Contract
 - Semua endpoint internal Rust menggunakan prefix `/api/internal/...`.
 - Wajib header `x-api-key: <ENV_SECRET>`.

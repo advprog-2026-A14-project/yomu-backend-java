@@ -30,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SecurityIntegrationTest {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String SECURE_PING_PATH = "/api/v1/secure/ping";
 
     @Autowired
     private MockMvc mockMvc;
@@ -39,7 +40,7 @@ class SecurityIntegrationTest {
 
     @Test
     void requestWithoutTokenShouldReturnWrapped401() throws Exception {
-        mockMvc.perform(get("/api/v1/users/me"))
+        mockMvc.perform(get(SECURE_PING_PATH))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").isNotEmpty());
@@ -47,7 +48,7 @@ class SecurityIntegrationTest {
 
     @Test
     void requestWithInvalidTokenShouldReturnWrapped401() throws Exception {
-        mockMvc.perform(get("/api/v1/users/me")
+        mockMvc.perform(get(SECURE_PING_PATH)
                         .header(AUTHORIZATION_HEADER, BEARER_PREFIX + "invalid-token"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
@@ -58,7 +59,7 @@ class SecurityIntegrationTest {
     void requestWithValidTokenShouldReturn200() throws Exception {
         String token = jwtService.generateToken(UUID.randomUUID(), Role.PELAJAR);
 
-        mockMvc.perform(get("/api/v1/users/me")
+        mockMvc.perform(get(SECURE_PING_PATH)
                         .header(AUTHORIZATION_HEADER, BEARER_PREFIX + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -79,7 +80,7 @@ class SecurityIntegrationTest {
     @RestController
     @RequestMapping("/api/v1")
     static class DummySecureController {
-        @GetMapping("/users/me")
+        @GetMapping("/secure/ping")
         ApiResponse<Void> me() {
             return ApiResponse.success("me ok");
         }
