@@ -1,6 +1,5 @@
 package id.ac.ui.cs.advprog.yomubackendjava.user;
 
-import id.ac.ui.cs.advprog.yomubackendjava.auth.AuthMapper;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.UserDto;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
@@ -20,18 +19,18 @@ public class UserService {
     private static final String DELETED_MESSAGE = "akun tidak aktif";
 
     private final UserRepository userRepository;
-    private final AuthMapper authMapper;
+    private final UserMapper userMapper;
 
-    public UserService(UserRepository userRepository, AuthMapper authMapper) {
+    public UserService(UserRepository userRepository, UserMapper userMapper) {
         this.userRepository = userRepository;
-        this.authMapper = authMapper;
+        this.userMapper = userMapper;
     }
 
     public ApiResponse<UserDto> me() {
         UUID userId = CurrentUser.userId().orElseThrow(() -> new UnauthorizedException(UNAUTHORIZED_MESSAGE));
         Optional<UserEntity> activeUser = userRepository.findByUserIdAndDeletedAtIsNull(userId);
         if (activeUser.isPresent()) {
-            return ApiResponse.success(ME_SUCCESS_MESSAGE, authMapper.toUserDto(activeUser.get()));
+            return ApiResponse.success(ME_SUCCESS_MESSAGE, userMapper.toUserDto(activeUser.get()));
         }
 
         if (userRepository.findById(userId).isPresent()) {

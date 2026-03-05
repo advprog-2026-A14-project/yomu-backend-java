@@ -11,6 +11,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedExceptio
 import id.ac.ui.cs.advprog.yomubackendjava.integration.rust.RustEngineClient;
 import id.ac.ui.cs.advprog.yomubackendjava.outbox.OutboxService;
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
+import id.ac.ui.cs.advprog.yomubackendjava.user.UserMapper;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
 import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
@@ -43,7 +44,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final AuthMapper authMapper;
+    private final UserMapper userMapper;
     private final IdentifierResolver identifierResolver;
     private final RustEngineClient rustEngineClient;
     private final OutboxService outboxService;
@@ -52,7 +53,7 @@ public class AuthService {
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            AuthMapper authMapper,
+            UserMapper userMapper,
             IdentifierResolver identifierResolver,
             RustEngineClient rustEngineClient,
             OutboxService outboxService
@@ -60,7 +61,7 @@ public class AuthService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.authMapper = authMapper;
+        this.userMapper = userMapper;
         this.identifierResolver = identifierResolver;
         this.rustEngineClient = rustEngineClient;
         this.outboxService = outboxService;
@@ -93,7 +94,7 @@ public class AuthService {
         syncUserToRust(savedUser.getUserId());
 
         String accessToken = jwtService.generateToken(savedUser.getUserId(), savedUser.getRole());
-        AuthResponseData responseData = new AuthResponseData(accessToken, authMapper.toUserDto(savedUser));
+        AuthResponseData responseData = new AuthResponseData(accessToken, userMapper.toUserDto(savedUser));
         return ApiResponse.success(REGISTER_SUCCESS_MESSAGE, responseData);
     }
 
@@ -122,7 +123,7 @@ public class AuthService {
         }
 
         String accessToken = jwtService.generateToken(user.getUserId(), user.getRole());
-        AuthResponseData responseData = new AuthResponseData(accessToken, authMapper.toUserDto(user));
+        AuthResponseData responseData = new AuthResponseData(accessToken, userMapper.toUserDto(user));
         return ApiResponse.success(LOGIN_SUCCESS_MESSAGE, responseData);
     }
 

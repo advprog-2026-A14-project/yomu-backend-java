@@ -1,11 +1,11 @@
-package id.ac.ui.cs.advprog.yomubackendjava.auth;
+package id.ac.ui.cs.advprog.yomubackendjava.user;
 
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.UserDto;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
 import org.springframework.stereotype.Component;
 
 @Component
-public class AuthMapper {
+public class UserMapper {
     public UserDto toUserDto(UserEntity user) {
         return new UserDto(
                 user.getUserId().toString(),
