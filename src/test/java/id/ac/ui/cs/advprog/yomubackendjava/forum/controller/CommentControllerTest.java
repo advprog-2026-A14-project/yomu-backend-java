@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.forum.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import id.ac.ui.cs.advprog.yomubackendjava.security.JwtAuthFilter;
+import tools.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CommentResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CreateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
@@ -9,8 +10,10 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.UnauthorizedCommentAc
 import id.ac.ui.cs.advprog.yomubackendjava.forum.service.CommentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.bean.MockBean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -26,13 +29,23 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(CommentController.class)
+@WebMvcTest(
+        controllers = CommentController.class,
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.ASSIGNABLE_TYPE,
+                classes = JwtAuthFilter.class
+        )
+)
 class CommentControllerTest {
+    private static final String ARTICLE_COMMENTS_ENDPOINT = "/api/forum/articles/{articleId}/comments";
+    private static final String COMMENT_BY_ID_ENDPOINT = "/api/forum/comments/{commentId}";
+    private static final String USER_ID_PARAM = "userId";
+
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private CommentService commentService;
 
     @Autowired
@@ -57,7 +70,7 @@ class CommentControllerTest {
         when(commentService.createComment(eq(articleId), any(CreateCommentRequest.class)))
                 .thenReturn(response);
 
-        mockMvc.perform(post("/api/forum/articles/{articleId}/comments", articleId)
+        mockMvc.perform(post(ARTICLE_COMMENTS_ENDPOINT, articleId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -69,7 +82,7 @@ class CommentControllerTest {
     void createComment_emptyContent_shouldReturn400() throws Exception {
         CreateCommentRequest request = new CreateCommentRequest(userId, null, "");
 
-        mockMvc.perform(post("/api/forum/articles/{articleId}/comments", articleId)
+        mockMvc.perform(post(ARTICLE_COMMENTS_ENDPOINT, articleId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -88,7 +101,7 @@ class CommentControllerTest {
 
         when(commentService.getCommentsByArticle(articleId)).thenReturn(List.of(response));
 
-        mockMvc.perform(get("/api/forum/articles/{articleId}/comments", articleId))
+        mockMvc.perform(get(ARTICLE_COMMENTS_ENDPOINT, articleId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(commentId.toString()));
     }
@@ -108,8 +121,8 @@ class CommentControllerTest {
         when(commentService.updateComment(eq(commentId), eq(userId), any(UpdateCommentRequest.class)))
                 .thenReturn(response);
 
-        mockMvc.perform(put("/api/forum/comments/{commentId}", commentId)
-                        .param("userId", userId.toString())
+        mockMvc.perform(put(COMMENT_BY_ID_ENDPOINT, commentId)
+                        .param(USER_ID_PARAM, userId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -124,8 +137,8 @@ class CommentControllerTest {
         when(commentService.updateComment(eq(commentId), eq(otherUserId), any(UpdateCommentRequest.class)))
                 .thenThrow(new UnauthorizedCommentAccessException());
 
-        mockMvc.perform(put("/api/forum/comments/{commentId}", commentId)
-                        .param("userId", otherUserId.toString())
+        mockMvc.perform(put(COMMENT_BY_ID_ENDPOINT, commentId)
+                        .param(USER_ID_PARAM, otherUserId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
@@ -135,8 +148,8 @@ class CommentControllerTest {
     void deleteComment_byOwner_shouldReturn204() throws Exception {
         doNothing().when(commentService).deleteComment(commentId, userId);
 
-        mockMvc.perform(delete("/api/forum/comments/{commentId}", commentId)
-                        .param("userId", userId.toString()))
+        mockMvc.perform(delete(COMMENT_BY_ID_ENDPOINT, commentId)
+                        .param(USER_ID_PARAM, userId.toString()))
                 .andExpect(status().isNoContent());
     }
 
@@ -147,8 +160,8 @@ class CommentControllerTest {
         doThrow(new CommentNotFoundException(fakeId))
                 .when(commentService).deleteComment(eq(fakeId), eq(userId));
 
-        mockMvc.perform(delete("/api/forum/comments/{commentId}", fakeId)
-                        .param("userId", userId.toString()))
+        mockMvc.perform(delete(COMMENT_BY_ID_ENDPOINT, fakeId)
+                        .param(USER_ID_PARAM, userId.toString()))
                 .andExpect(status().isNotFound());
     }
 }
