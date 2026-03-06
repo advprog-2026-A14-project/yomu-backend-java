@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.yomubackendjava.forum.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
@@ -18,10 +19,20 @@ import java.util.UUID;
 public class CommentResponse {
 
     private UUID id;
+
+    @JsonProperty("article_id")
     private UUID articleId;
+
+    @JsonProperty("user_id")
     private UUID userId;
+
+    @JsonProperty("parent_comment_id")
     private UUID parentCommentId;
+
     private String content;
+
+    @JsonProperty("created_at")
     private Instant createdAt;
+
     private List<CommentResponse> replies;
 }
