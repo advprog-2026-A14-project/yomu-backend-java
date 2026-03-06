@@ -1,6 +1,6 @@
 # Multi-stage build for Yomu Backend Java
 # Build stage
-FROM gradle:8.11.1-jdk21 AS builder
+FROM gradle:8.14-jdk21 AS builder
 
 WORKDIR /app
 
