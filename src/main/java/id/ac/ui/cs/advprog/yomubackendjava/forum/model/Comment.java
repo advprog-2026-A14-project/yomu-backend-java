@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -27,8 +29,12 @@ public class Comment {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "parent_comment_id")
-    private UUID parentCommentId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_comment_id")
+    private Comment parentComment;
+
+    @OneToMany(mappedBy = "parentComment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> replies = new ArrayList<>();
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
