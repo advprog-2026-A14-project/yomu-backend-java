@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.yomubackendjava.forum.service;
 
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CommentResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CreateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
@@ -7,12 +8,18 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.CommentNotFoundExcept
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.UnauthorizedCommentAccessException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.Comment;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.repository.CommentRepository;
+import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
+import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -53,11 +60,24 @@ class CommentServiceTest {
         sampleComment.setReplies(new ArrayList<>());
     }
 
-    // ========== CREATE ==========
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAs(UUID id, Role role) {
+        JwtService.JwtClaims claims = new JwtService.JwtClaims(
+                id, role, Instant.now(), Instant.now().plusSeconds(3600));
+        String authority = "ROLE_" + role.name();
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                claims, null, List.of(new SimpleGrantedAuthority(authority)));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
 
     @Test
     void createRootComment_shouldReturnResponse() {
-        CreateCommentRequest request = new CreateCommentRequest(userId, null, "Komentar baru");
+        authenticateAs(userId, Role.PELAJAR);
+        CreateCommentRequest request = new CreateCommentRequest(null, "Komentar baru");
 
         when(commentRepository.save(any(Comment.class))).thenReturn(sampleComment);
 
@@ -71,7 +91,17 @@ class CommentServiceTest {
     }
 
     @Test
+    void createComment_noAuth_shouldThrowUnauthorized() {
+        CreateCommentRequest request = new CreateCommentRequest(null, "Komentar baru");
+
+        assertThrows(UnauthorizedException.class,
+                () -> commentService.createComment(articleId, request));
+    }
+
+    @Test
     void createReply_shouldSetParentComment() {
+        authenticateAs(userId, Role.PELAJAR);
+
         Comment replyComment = new Comment();
         replyComment.setId(UUID.randomUUID());
         replyComment.setArticleId(articleId);
@@ -81,7 +111,7 @@ class CommentServiceTest {
         replyComment.setCreatedAt(Instant.now());
         replyComment.setReplies(new ArrayList<>());
 
-        CreateCommentRequest request = new CreateCommentRequest(userId, commentId, "Ini reply");
+        CreateCommentRequest request = new CreateCommentRequest(commentId, "Ini reply");
 
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
         when(commentRepository.save(any(Comment.class))).thenReturn(replyComment);
@@ -95,16 +125,15 @@ class CommentServiceTest {
 
     @Test
     void createReply_parentNotFound_shouldThrow() {
+        authenticateAs(userId, Role.PELAJAR);
         UUID fakeParentId = UUID.randomUUID();
-        CreateCommentRequest request = new CreateCommentRequest(userId, fakeParentId, "Reply");
+        CreateCommentRequest request = new CreateCommentRequest(fakeParentId, "Reply");
 
         when(commentRepository.findById(fakeParentId)).thenReturn(Optional.empty());
 
         assertThrows(CommentNotFoundException.class,
                 () -> commentService.createComment(articleId, request));
     }
-
-    // ========== READ ==========
 
     @Test
     void getCommentsByArticle_shouldReturnRootComments() {
@@ -127,10 +156,9 @@ class CommentServiceTest {
         assertTrue(responses.isEmpty());
     }
 
-    // ========== UPDATE ==========
-
     @Test
     void updateComment_byOwner_shouldSucceed() {
+        authenticateAs(userId, Role.PELAJAR);
         UpdateCommentRequest request = new UpdateCommentRequest("Konten diperbarui");
 
         Comment updatedComment = new Comment();
@@ -144,61 +172,87 @@ class CommentServiceTest {
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
         when(commentRepository.save(any(Comment.class))).thenReturn(updatedComment);
 
-        CommentResponse response = commentService.updateComment(commentId, userId, request);
+        CommentResponse response = commentService.updateComment(commentId, request);
 
         assertEquals("Konten diperbarui", response.getContent());
     }
 
     @Test
     void updateComment_byNonOwner_shouldThrowUnauthorized() {
-        UUID otherUserId = UUID.randomUUID();
+        authenticateAs(UUID.randomUUID(), Role.PELAJAR);
         UpdateCommentRequest request = new UpdateCommentRequest("Coba edit");
 
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
 
         assertThrows(UnauthorizedCommentAccessException.class,
-                () -> commentService.updateComment(commentId, otherUserId, request));
+                () -> commentService.updateComment(commentId, request));
+    }
+
+    @Test
+    void updateComment_noAuth_shouldThrowUnauthorized() {
+        UpdateCommentRequest request = new UpdateCommentRequest("Edit");
+
+        assertThrows(UnauthorizedException.class,
+                () -> commentService.updateComment(commentId, request));
     }
 
     @Test
     void updateComment_notFound_shouldThrow() {
+        authenticateAs(userId, Role.PELAJAR);
         UUID fakeId = UUID.randomUUID();
         UpdateCommentRequest request = new UpdateCommentRequest("Edit");
 
         when(commentRepository.findById(fakeId)).thenReturn(Optional.empty());
 
         assertThrows(CommentNotFoundException.class,
-                () -> commentService.updateComment(fakeId, userId, request));
+                () -> commentService.updateComment(fakeId, request));
     }
-
-    // ========== DELETE ==========
 
     @Test
     void deleteComment_byOwner_shouldSucceed() {
+        authenticateAs(userId, Role.PELAJAR);
+
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
 
-        assertDoesNotThrow(() -> commentService.deleteComment(commentId, userId));
+        assertDoesNotThrow(() -> commentService.deleteComment(commentId));
         verify(commentRepository).delete(sampleComment);
     }
 
     @Test
     void deleteComment_byNonOwner_shouldThrowUnauthorized() {
-        UUID otherUserId = UUID.randomUUID();
+        authenticateAs(UUID.randomUUID(), Role.PELAJAR);
 
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
 
         assertThrows(UnauthorizedCommentAccessException.class,
-                () -> commentService.deleteComment(commentId, otherUserId));
+                () -> commentService.deleteComment(commentId));
         verify(commentRepository, never()).delete(any());
     }
 
     @Test
+    void deleteComment_byAdmin_shouldSucceedRegardlessOfOwnership() {
+        authenticateAs(UUID.randomUUID(), Role.ADMIN);
+
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
+
+        assertDoesNotThrow(() -> commentService.deleteComment(commentId));
+        verify(commentRepository).delete(sampleComment);
+    }
+
+    @Test
+    void deleteComment_noAuth_shouldThrowUnauthorized() {
+        assertThrows(UnauthorizedException.class,
+                () -> commentService.deleteComment(commentId));
+    }
+
+    @Test
     void deleteComment_notFound_shouldThrow() {
+        authenticateAs(userId, Role.PELAJAR);
         UUID fakeId = UUID.randomUUID();
 
         when(commentRepository.findById(fakeId)).thenReturn(Optional.empty());
 
         assertThrows(CommentNotFoundException.class,
-                () -> commentService.deleteComment(fakeId, userId));
+                () -> commentService.deleteComment(fakeId));
     }
 }
