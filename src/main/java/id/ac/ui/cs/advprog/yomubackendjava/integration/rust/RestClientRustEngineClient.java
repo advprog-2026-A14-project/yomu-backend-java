@@ -25,11 +25,11 @@ public class RestClientRustEngineClient implements RustEngineClient {
             @Value("${rust.engine.base-url:http://localhost:8080}") String baseUrl,
             @Value("${internal.api.key:}") String internalApiKey
     ) {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(2))
-                .build();
-
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(2))
+                        .build()
+        );
         requestFactory.setReadTimeout(Duration.ofSeconds(3));
 
         this.restClient = RestClient.builder()

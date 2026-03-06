@@ -28,10 +28,11 @@ public class RestGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
     private final String expectedAudience;
 
     public RestGoogleIdTokenVerifier(@Value("${google.oauth.client-id:}") String expectedAudience) {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(2))
-                .build();
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(2))
+                        .build()
+        );
         requestFactory.setReadTimeout(Duration.ofSeconds(3));
 
         this.restClient = RestClient.builder()

@@ -31,6 +31,8 @@ class SecurityIntegrationTest {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String SECURE_PING_PATH = "/api/v1/secure/ping";
+    private static final String SUCCESS_JSON_PATH = "$.success";
+    private static final String MESSAGE_JSON_PATH = "$.message";
 
     @Autowired
     private MockMvc mockMvc;
@@ -42,8 +44,8 @@ class SecurityIntegrationTest {
     void requestWithoutTokenShouldReturnWrapped401() throws Exception {
         mockMvc.perform(get(SECURE_PING_PATH))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").isNotEmpty());
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
     }
 
     @Test
@@ -51,8 +53,8 @@ class SecurityIntegrationTest {
         mockMvc.perform(get(SECURE_PING_PATH)
                         .header(AUTHORIZATION_HEADER, BEARER_PREFIX + "invalid-token"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").isNotEmpty());
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
     }
 
     @Test
@@ -62,8 +64,8 @@ class SecurityIntegrationTest {
         mockMvc.perform(get(SECURE_PING_PATH)
                         .header(AUTHORIZATION_HEADER, BEARER_PREFIX + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").isNotEmpty());
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
     }
 
     @Test
@@ -73,8 +75,8 @@ class SecurityIntegrationTest {
         mockMvc.perform(get("/api/v1/admin/ping")
                         .header(AUTHORIZATION_HEADER, BEARER_PREFIX + token))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").isNotEmpty());
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
     }
 
     @RestController

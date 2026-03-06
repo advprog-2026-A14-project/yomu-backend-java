@@ -43,6 +43,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(GoogleLoginTest.MockBeans.class)
 class GoogleLoginTest {
     private static final String GOOGLE_LOGIN_PATH = "/api/v1/auth/google";
+    private static final String SUCCESS_JSON_PATH = "$.success";
+    private static final String MESSAGE_JSON_PATH = "$.message";
 
     @Autowired
     private MockMvc mockMvc;
@@ -72,14 +74,14 @@ class GoogleLoginTest {
 
         mockMvc.perform(post(GOOGLE_LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "id_token": "invalid-token"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").isNotEmpty());
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
     }
 
     @Test
@@ -91,14 +93,14 @@ class GoogleLoginTest {
 
         mockMvc.perform(post(GOOGLE_LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "id_token": "google-new",
                                   "display_name": "Display Google"
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
                 .andExpect(jsonPath("$.data.is_new_user").value(true))
                 .andExpect(jsonPath("$.data.access_token").isNotEmpty())
                 .andExpect(jsonPath("$.data.user.role").value("PELAJAR"));
@@ -125,13 +127,13 @@ class GoogleLoginTest {
 
         mockMvc.perform(post(GOOGLE_LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "id_token": "google-existing"
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
                 .andExpect(jsonPath("$.data.is_new_user").value(false))
                 .andExpect(jsonPath("$.data.user.user_id").value(existing.getUserId().toString()));
 
@@ -147,14 +149,14 @@ class GoogleLoginTest {
 
         mockMvc.perform(post(GOOGLE_LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "id_token": "google-rust-fail",
                                   "username": "google_rust_fail"
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
                 .andExpect(jsonPath("$.data.is_new_user").value(true));
 
         List<FailedSyncEventEntity> events = failedSyncEventRepository.findAll();
@@ -180,15 +182,15 @@ class GoogleLoginTest {
 
         mockMvc.perform(post(GOOGLE_LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "id_token": "google-conflict",
                                   "username": "taken_username"
                                 }
                                 """))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").isNotEmpty());
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
     }
 
     @TestConfiguration

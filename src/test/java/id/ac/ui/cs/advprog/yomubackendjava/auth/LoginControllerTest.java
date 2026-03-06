@@ -25,6 +25,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class LoginControllerTest {
     private static final String LOGIN_PATH = "/api/v1/auth/login";
     private static final String RAW_PASSWORD = "rahasia123";
+    private static final String SUCCESS_JSON_PATH = "$.success";
+    private static final String MESSAGE_JSON_PATH = "$.message";
 
     @Autowired
     private MockMvc mockMvc;
@@ -46,14 +48,14 @@ class LoginControllerTest {
 
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "identifier": "login_username",
                                   "password": "rahasia123"
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
                 .andExpect(jsonPath("$.data.access_token").isNotEmpty())
                 .andExpect(jsonPath("$.data.user.role").value("PELAJAR"));
     }
@@ -64,14 +66,14 @@ class LoginControllerTest {
 
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "identifier": "login.email@example.com",
                                   "password": "rahasia123"
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
                 .andExpect(jsonPath("$.data.access_token").isNotEmpty())
                 .andExpect(jsonPath("$.data.user.email").value("login.email@example.com"));
     }
@@ -82,14 +84,14 @@ class LoginControllerTest {
 
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "identifier": "+628121111113",
                                   "password": "rahasia123"
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
                 .andExpect(jsonPath("$.data.access_token").isNotEmpty())
                 .andExpect(jsonPath("$.data.user.phone_number").value("+628121111113"));
     }
@@ -100,30 +102,30 @@ class LoginControllerTest {
 
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "identifier": "wrong_password",
                                   "password": "salah_password"
                                 }
                                 """))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("identifier atau password salah"));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).value("identifier atau password salah"));
     }
 
     @Test
     void userNotFoundShouldReturn401() throws Exception {
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "identifier": "tidak_ada",
                                   "password": "rahasia123"
                                 }
                                 """))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("identifier atau password salah"));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).value("identifier atau password salah"));
     }
 
     @Test
@@ -132,15 +134,15 @@ class LoginControllerTest {
 
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "identifier": "deleted_user",
                                   "password": "rahasia123"
                                 }
                                 """))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("akun tidak aktif"));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).value("akun tidak aktif"));
     }
 
     @Test
@@ -149,15 +151,15 @@ class LoginControllerTest {
 
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "identifier": "sso_user",
                                   "password": "rahasia123"
                                 }
                                 """))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("akun menggunakan metode login lain"));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).value("akun menggunakan metode login lain"));
     }
 
     private void saveActiveUser(

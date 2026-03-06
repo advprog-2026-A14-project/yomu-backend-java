@@ -5,12 +5,12 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 @JsonInclude(Include.NON_NULL)
 public final class ApiResponse<T> {
-    private final boolean success;
+    private final boolean successful;
     private final String message;
     private final T data;
 
     private ApiResponse(boolean success, String message, T data) {
-        this.success = success;
+        this.successful = success;
         this.message = message;
         this.data = data;
     }
@@ -28,7 +28,7 @@ public final class ApiResponse<T> {
     }
 
     public boolean isSuccess() {
-        return success;
+        return successful;
     }
 
     public String getMessage() {

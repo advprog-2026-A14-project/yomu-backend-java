@@ -38,6 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AdminOutboxTest {
     private static final String ADMIN_EVENTS_PATH = "/api/v1/admin/failed-sync-events";
     private static final String ADMIN_RETRY_PATH = "/api/v1/admin/failed-sync-events/retry";
+    private static final String SUCCESS_JSON_PATH = "$.success";
+    private static final String MESSAGE_JSON_PATH = "$.message";
 
     @Autowired
     private MockMvc mockMvc;
@@ -59,21 +61,21 @@ class AdminOutboxTest {
 
     @Test
     void pelajarTokenShouldGet403() throws Exception {
-        mockMvc.perform(get(ADMIN_EVENTS_PATH)
+                mockMvc.perform(get(ADMIN_EVENTS_PATH)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.PELAJAR)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").isNotEmpty());
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
     }
 
     @Test
     void adminTokenShouldGet200ForListEvents() throws Exception {
         failedSyncEventRepository.saveAndFlush(buildEvent(UUID.randomUUID(), SyncEventStatus.FAILED, 0));
 
-        mockMvc.perform(get(ADMIN_EVENTS_PATH)
+                mockMvc.perform(get(ADMIN_EVENTS_PATH)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
                 .andExpect(jsonPath("$.data.events.length()").value(1));
     }
 
@@ -86,13 +88,13 @@ class AdminOutboxTest {
         mockMvc.perform(post(ADMIN_RETRY_PATH)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "event_ids": [%d]
                                 }
                                 """.formatted(event.getEventId())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
         FailedSyncEventEntity updated = failedSyncEventRepository.findById(event.getEventId()).orElseThrow();
         assertThat(updated.getStatus()).isEqualTo(SyncEventStatus.DONE);
@@ -107,13 +109,13 @@ class AdminOutboxTest {
         mockMvc.perform(post(ADMIN_RETRY_PATH)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "event_ids": [%d]
                                 }
                                 """.formatted(event.getEventId())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
         FailedSyncEventEntity updated = failedSyncEventRepository.findById(event.getEventId()).orElseThrow();
         assertThat(updated.getStatus()).isEqualTo(SyncEventStatus.DONE);
@@ -128,13 +130,13 @@ class AdminOutboxTest {
         mockMvc.perform(post(ADMIN_RETRY_PATH)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "event_ids": [%d]
                                 }
                                 """.formatted(event.getEventId())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
         FailedSyncEventEntity updated = failedSyncEventRepository.findById(event.getEventId()).orElseThrow();
         assertThat(updated.getStatus()).isEqualTo(SyncEventStatus.FAILED);

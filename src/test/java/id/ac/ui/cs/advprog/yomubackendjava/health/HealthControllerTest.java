@@ -38,7 +38,7 @@ class HealthControllerTest {
 
     @Test
     void apiResponseSuccessWithoutDataShouldNotContainDataField() throws Exception {
-        MockMvc standaloneMockMvc = MockMvcBuilders.standaloneSetup(new TestOnlyController())
+        MockMvc standaloneMockMvc = MockMvcBuilders.standaloneSetup(new DummyController())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
@@ -51,7 +51,7 @@ class HealthControllerTest {
 
     @Test
     void conflictExceptionShouldReturnWrappedConflictError() throws Exception {
-        MockMvc standaloneMockMvc = MockMvcBuilders.standaloneSetup(new TestOnlyController())
+        MockMvc standaloneMockMvc = MockMvcBuilders.standaloneSetup(new DummyController())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
@@ -63,7 +63,7 @@ class HealthControllerTest {
 
     @RestController
     @RequestMapping("/api/v1/test")
-    public static class TestOnlyController {
+    public static class DummyController {
         @GetMapping("/no-data")
         public ApiResponse<Void> noData() {
             return ApiResponse.success("No data response");

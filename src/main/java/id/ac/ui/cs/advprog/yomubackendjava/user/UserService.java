@@ -43,6 +43,8 @@ public class UserService {
     private static final String IDS_REQUIRED_MESSAGE = "ids wajib diisi";
     private static final String IDS_MAX_MESSAGE = "maksimal 100 ids";
     private static final String IDS_INVALID_UUID_MESSAGE = "ids harus UUID valid";
+    private static final int MIN_BATCH_IDS = 1;
+    private static final int MAX_BATCH_IDS = 100;
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
@@ -139,10 +141,10 @@ public class UserService {
         }
 
         String[] rawIds = normalized.split(",");
-        if (rawIds.length == 0) {
+        if (rawIds.length < MIN_BATCH_IDS) {
             throw new BadRequestException(IDS_REQUIRED_MESSAGE);
         }
-        if (rawIds.length > 100) {
+        if (rawIds.length > MAX_BATCH_IDS) {
             throw new BadRequestException(IDS_MAX_MESSAGE);
         }
 

@@ -3,6 +3,8 @@ package id.ac.ui.cs.advprog.yomubackendjava.auth;
 import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.Locale;
+
 @Component
 public class UsernameGenerator {
     private static final String DEFAULT_USERNAME_BASE = "google_user";
@@ -30,7 +32,7 @@ public class UsernameGenerator {
     }
 
     private String normalizeBase(String rawBase) {
-        String base = rawBase == null ? DEFAULT_USERNAME_BASE : rawBase.toLowerCase();
+        String base = rawBase == null ? DEFAULT_USERNAME_BASE : rawBase.toLowerCase(Locale.ROOT);
         String sanitized = base.replaceAll("[^a-z0-9_]", "_");
         String compact = sanitized.replaceAll("_+", "_");
         String trimmed = compact.replaceAll("^_+|_+$", "");
