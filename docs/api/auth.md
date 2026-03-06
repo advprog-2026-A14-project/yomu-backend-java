@@ -91,6 +91,7 @@
   - `display_name` (optional)
 - Behavior:
   - `id_token` diverifikasi lewat `GoogleIdTokenVerifier`
+  - jika `GOOGLE_OAUTH_CLIENT_ID` di-set, claim `aud` harus sama dengan nilai tersebut
   - jika user sudah ada berdasarkan `google_sub`: login biasa, `is_new_user=false`
   - jika user baru: buat akun `PELAJAR`, `password_hash=null`, simpan `google_sub`, lalu coba sync ke Rust
   - jika sync Rust gagal/timeout: tetap `200`, event outbox `failed_sync_events` dibuat
