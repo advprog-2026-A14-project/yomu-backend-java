@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.yomubackendjava.forum.service;
 
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CommentResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CreateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
@@ -7,6 +8,8 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.CommentNotFoundExcept
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.UnauthorizedCommentAccessException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.Comment;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.repository.CommentRepository;
+import id.ac.ui.cs.advprog.yomubackendjava.security.CurrentUser;
+import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,9 +26,12 @@ public class CommentService {
     }
 
     public CommentResponse createComment(UUID articleId, CreateCommentRequest request) {
+        UUID userId = CurrentUser.userId()
+                .orElseThrow(() -> new UnauthorizedException("Login diperlukan"));
+
         Comment comment = new Comment();
         comment.setArticleId(articleId);
-        comment.setUserId(request.getUserId());
+        comment.setUserId(userId);
         comment.setContent(request.getContent());
 
         if (request.getParentCommentId() != null) {
@@ -46,7 +52,10 @@ public class CommentService {
                 .collect(Collectors.toList());
     }
 
-    public CommentResponse updateComment(UUID commentId, UUID userId, UpdateCommentRequest request) {
+    public CommentResponse updateComment(UUID commentId, UpdateCommentRequest request) {
+        UUID userId = CurrentUser.userId()
+                .orElseThrow(() -> new UnauthorizedException("Login diperlukan"));
+
         Comment comment = findCommentOrThrow(commentId);
         validateOwnership(comment, userId);
 
@@ -55,9 +64,15 @@ public class CommentService {
         return toResponse(updated);
     }
 
-    public void deleteComment(UUID commentId, UUID userId) {
+    public void deleteComment(UUID commentId) {
+        UUID userId = CurrentUser.userId()
+                .orElseThrow(() -> new UnauthorizedException("Login diperlukan"));
+        Role role = CurrentUser.role().orElse(Role.PELAJAR);
+
         Comment comment = findCommentOrThrow(commentId);
-        validateOwnership(comment, userId);
+        if (role != Role.ADMIN) {
+            validateOwnership(comment, userId);
+        }
         commentRepository.delete(comment);
     }
 
