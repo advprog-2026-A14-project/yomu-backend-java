@@ -49,6 +49,7 @@ class CommentControllerTest {
 
     private static final String ARTICLE_COMMENTS_ENDPOINT = "/api/v1/forums/{articleId}/comments";
     private static final String COMMENT_BY_ID_ENDPOINT = "/api/v1/forums/comments/{commentId}";
+    private static final String JSON_SUCCESS = "$.success";
 
     @Autowired
     private MockMvc mockMvc;
@@ -98,7 +99,7 @@ class CommentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(JSON_SUCCESS).value(true))
                 .andExpect(jsonPath("$.data.id").value(commentId.toString()))
                 .andExpect(jsonPath("$.data.content").value("Komentar baru"));
     }
@@ -113,7 +114,7 @@ class CommentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(jsonPath(JSON_SUCCESS).value(false));
     }
 
     @Test
@@ -131,7 +132,7 @@ class CommentControllerTest {
 
         mockMvc.perform(get(ARTICLE_COMMENTS_ENDPOINT, articleId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(JSON_SUCCESS).value(true))
                 .andExpect(jsonPath("$.data[0].id").value(commentId.toString()));
     }
 
@@ -156,7 +157,7 @@ class CommentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(JSON_SUCCESS).value(true))
                 .andExpect(jsonPath("$.data.content").value("Konten diperbarui"));
     }
 
@@ -173,7 +174,7 @@ class CommentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(jsonPath(JSON_SUCCESS).value(false));
     }
 
     @Test
@@ -184,7 +185,7 @@ class CommentControllerTest {
 
         mockMvc.perform(delete(COMMENT_BY_ID_ENDPOINT, commentId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(JSON_SUCCESS).value(true));
     }
 
     @Test
@@ -195,7 +196,7 @@ class CommentControllerTest {
 
         mockMvc.perform(delete(COMMENT_BY_ID_ENDPOINT, commentId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(JSON_SUCCESS).value(true));
     }
 
     @Test
@@ -209,6 +210,6 @@ class CommentControllerTest {
 
         mockMvc.perform(delete(COMMENT_BY_ID_ENDPOINT, fakeId))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(jsonPath(JSON_SUCCESS).value(false));
     }
 }
