@@ -1,36 +1,49 @@
 name: Continuous Deployment (CD)
 
 on:
-  workflow_call:
-    inputs:
-      environment_name:
-        description: Target GitHub environment and deployment tag prefix
-        required: true
-        type: string
-      environment_url:
-        description: Public URL for the deployed environment
-        required: true
-        type: string
-      heroku_remote_branch:
-        description: Branch name on the Heroku git remote
-        required: false
-        default: main
-        type: string
+  push:
+    branches:
+      - main
+      - staging
 
 permissions:
   contents: write
 
 concurrency:
-  group: cd-${{ inputs.environment_name }}
+  group: cd-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: CD - ${{ inputs.environment_name }}
+  unit_tests:
+    name: Unit tests
     runs-on: ubuntu-22.04
+    steps:
+      - name: Check out the Git repository
+        uses: actions/checkout@v4
+      - name: Set up Java toolchain
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - name: Run unit tests
+        run: ./gradlew test
+
+  quality_checks:
+    name: Quality checks (PMD + JaCoCo)
+    uses: ./.github/workflows/pmd.yml
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-22.04
+    needs:
+      - unit_tests
+      - quality_checks
     environment:
-      name: ${{ inputs.environment_name }}
-      url: ${{ inputs.environment_url }}
+      name: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+      url: ${{ github.ref_name == 'main' && 'https://yomu-backend-78a746322ad9.herokuapp.com/' || 'https://yomu-backend-staging-45829228a35b.herokuapp.com/' }}
     steps:
       - name: Check out the Git repository
         uses: actions/checkout@v4
@@ -41,7 +54,7 @@ jobs:
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
           HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
-          HEROKU_REMOTE_BRANCH: ${{ inputs.heroku_remote_branch }}
+          HEROKU_REMOTE_BRANCH: main
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -51,6 +64,7 @@ jobs:
           git push heroku "HEAD:refs/heads/${HEROKU_REMOTE_BRANCH}" --force
           DEPLOYED_AT="$(date -u +%Y%m%d-%H%M%S)"
           SHORT_SHA="$(git rev-parse --short=7 HEAD)"
-          TAG_NAME="deploy/${{ inputs.environment_name }}/${DEPLOYED_AT}-${SHORT_SHA}"
-          git tag -a "${TAG_NAME}" -m "Deploy ${{ inputs.environment_name }} to ${HEROKU_APP_NAME} from ${GITHUB_SHA}"
+          TARGET_ENV="${{ github.ref_name == 'main' && 'production' || 'staging' }}"
+          TAG_NAME="deploy/${TARGET_ENV}/${DEPLOYED_AT}-${SHORT_SHA}"
+          git tag -a "${TAG_NAME}" -m "Deploy ${TARGET_ENV} to ${HEROKU_APP_NAME} from ${GITHUB_SHA}"
           git push origin "${TAG_NAME}"
