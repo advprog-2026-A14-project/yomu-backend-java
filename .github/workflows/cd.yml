@@ -7,6 +7,10 @@ on:
         description: Target GitHub environment and deployment tag prefix
         required: true
         type: string
+      environment_url:
+        description: Public URL for the deployed environment
+        required: true
+        type: string
       heroku_remote_branch:
         description: Branch name on the Heroku git remote
         required: false
@@ -26,7 +30,7 @@ jobs:
     runs-on: ubuntu-22.04
     environment:
       name: ${{ inputs.environment_name }}
-      url: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com
+      url: ${{ inputs.environment_url }}
     steps:
       - name: Check out the Git repository
         uses: actions/checkout@v4

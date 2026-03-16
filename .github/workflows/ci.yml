@@ -54,6 +54,7 @@ jobs:
     uses: ./.github/workflows/cd.yml
     with:
       environment_name: staging
+      environment_url: https://yomu-backend-staging-45829228a35b.herokuapp.com/
       heroku_remote_branch: main
     secrets: inherit
 
@@ -66,5 +67,6 @@ jobs:
     uses: ./.github/workflows/cd.yml
     with:
       environment_name: production
+      environment_url: https://yomu-backend-78a746322ad9.herokuapp.com/
       heroku_remote_branch: main
     secrets: inherit
