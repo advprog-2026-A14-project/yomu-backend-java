@@ -1,7 +1,11 @@
 name: Continuous Deployment (CD)
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - Continuous Integration (CI)
+    types:
+      - completed
     branches:
       - main
       - staging
@@ -10,45 +14,27 @@ permissions:
   contents: write
 
 concurrency:
-  group: cd-${{ github.ref_name }}
+  group: cd-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 jobs:
-  unit_tests:
-    name: Unit tests
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Check out the Git repository
-        uses: actions/checkout@v4
-      - name: Set up Java toolchain
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "21"
-          cache: "gradle"
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-      - name: Run unit tests
-        run: ./gradlew test
-
-  quality_checks:
-    name: Quality checks (PMD + JaCoCo)
-    uses: ./.github/workflows/pmd.yml
-
   deploy:
     name: Deploy
     runs-on: ubuntu-22.04
-    needs:
-      - unit_tests
-      - quality_checks
+    if: >
+      ${{
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'staging')
+      }}
     environment:
-      name: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
-      url: ${{ github.ref_name == 'main' && 'https://yomu-backend-78a746322ad9.herokuapp.com/' || 'https://yomu-backend-staging-45829228a35b.herokuapp.com/' }}
+      name: ${{ github.event.workflow_run.head_branch == 'main' && 'production' || 'staging' }}
+      url: ${{ github.event.workflow_run.head_branch == 'main' && 'https://yomu-backend-78a746322ad9.herokuapp.com/' || 'https://yomu-backend-staging-45829228a35b.herokuapp.com/' }}
     steps:
       - name: Check out the Git repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
       - name: Deploy to Heroku
         env:
@@ -64,7 +50,7 @@ jobs:
           git push heroku "HEAD:refs/heads/${HEROKU_REMOTE_BRANCH}" --force
           DEPLOYED_AT="$(date -u +%Y%m%d-%H%M%S)"
           SHORT_SHA="$(git rev-parse --short=7 HEAD)"
-          TARGET_ENV="${{ github.ref_name == 'main' && 'production' || 'staging' }}"
+          TARGET_ENV="${{ github.event.workflow_run.head_branch == 'main' && 'production' || 'staging' }}"
           TAG_NAME="deploy/${TARGET_ENV}/${DEPLOYED_AT}-${SHORT_SHA}"
-          git tag -a "${TAG_NAME}" -m "Deploy ${TARGET_ENV} to ${HEROKU_APP_NAME} from ${GITHUB_SHA}"
+          git tag -a "${TAG_NAME}" -m "Deploy ${TARGET_ENV} to ${HEROKU_APP_NAME} from ${{ github.event.workflow_run.head_sha }}"
           git push origin "${TAG_NAME}"
