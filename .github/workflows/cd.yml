@@ -45,7 +45,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote remove heroku >/dev/null 2>&1 || true
           git remote add heroku "https://heroku:${HEROKU_API_KEY}@git.heroku.com/${HEROKU_APP_NAME}.git"
-          git push heroku "HEAD:${HEROKU_REMOTE_BRANCH}" --force
+          git push heroku "HEAD:refs/heads/${HEROKU_REMOTE_BRANCH}" --force
           DEPLOYED_AT="$(date -u +%Y%m%d-%H%M%S)"
           SHORT_SHA="$(git rev-parse --short=7 HEAD)"
           TAG_NAME="deploy/staging/${DEPLOYED_AT}-${SHORT_SHA}"
@@ -79,7 +79,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote remove heroku >/dev/null 2>&1 || true
           git remote add heroku "https://heroku:${HEROKU_API_KEY}@git.heroku.com/${HEROKU_APP_NAME}.git"
-          git push heroku "HEAD:${HEROKU_REMOTE_BRANCH}" --force
+          git push heroku "HEAD:refs/heads/${HEROKU_REMOTE_BRANCH}" --force
           DEPLOYED_AT="$(date -u +%Y%m%d-%H%M%S)"
           SHORT_SHA="$(git rev-parse --short=7 HEAD)"
           TAG_NAME="deploy/production/${DEPLOYED_AT}-${SHORT_SHA}"
