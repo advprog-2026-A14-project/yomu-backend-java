@@ -17,6 +17,9 @@ on:
         required: false
         default: false
 
+permissions:
+  contents: write
+
 jobs:
   unit_tests:
     name: Unit tests
