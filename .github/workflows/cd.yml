@@ -27,7 +27,9 @@ jobs:
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_branch == 'staging'
       }}
-    environment: staging
+    environment:
+      name: staging
+      url: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com
     steps:
       - name: Check out the Git repository
         uses: actions/checkout@v4
@@ -61,7 +63,9 @@ jobs:
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_branch == 'main'
       }}
-    environment: production
+    environment:
+      name: production
+      url: https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com
     steps:
       - name: Check out the Git repository
         uses: actions/checkout@v4
