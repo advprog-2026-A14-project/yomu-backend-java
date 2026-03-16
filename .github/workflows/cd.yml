@@ -1,44 +1,47 @@
 name: Continuous Deployment (CD)
 
 on:
-  workflow_run:
-    workflows:
-      - Continuous Integration (CI)
-    types:
-      - completed
-    branches:
-      - main
-      - staging
+  workflow_call:
+    inputs:
+      environment_name:
+        description: Target GitHub environment and deployment tag prefix
+        required: true
+        type: string
+      environment_url:
+        description: Public URL for the deployed environment
+        required: true
+        type: string
+      heroku_remote_branch:
+        description: Branch name on the Heroku git remote
+        required: false
+        default: main
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: cd-${{ github.event.workflow_run.head_branch }}
+  group: cd-${{ inputs.environment_name }}
   cancel-in-progress: false
 
 jobs:
-  deploy_staging:
-    name: CD - Staging
+  deploy:
+    name: CD - ${{ inputs.environment_name }}
     runs-on: ubuntu-22.04
-    if: >
-      ${{
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'staging'
-      }}
-    environment: staging
+    environment:
+      name: ${{ inputs.environment_name }}
+      url: ${{ inputs.environment_url }}
     steps:
       - name: Check out the Git repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
-      - name: Deploy to Heroku (staging)
+      - name: Deploy to Heroku
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
           HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
-          HEROKU_REMOTE_BRANCH: main
+          HEROKU_REMOTE_BRANCH: ${{ inputs.heroku_remote_branch }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -48,40 +51,6 @@ jobs:
           git push heroku "HEAD:refs/heads/${HEROKU_REMOTE_BRANCH}" --force
           DEPLOYED_AT="$(date -u +%Y%m%d-%H%M%S)"
           SHORT_SHA="$(git rev-parse --short=7 HEAD)"
-          TAG_NAME="deploy/staging/${DEPLOYED_AT}-${SHORT_SHA}"
-          git tag -a "${TAG_NAME}" -m "Deploy staging to ${HEROKU_APP_NAME} from ${GITHUB_SHA}"
-          git push origin "${TAG_NAME}"
-
-  deploy_production:
-    name: CD - Production
-    runs-on: ubuntu-22.04
-    if: >
-      ${{
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'main'
-      }}
-    environment: production
-    steps:
-      - name: Check out the Git repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
-      - name: Deploy to Heroku (production)
-        env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
-          HEROKU_REMOTE_BRANCH: main
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote remove heroku >/dev/null 2>&1 || true
-          git remote add heroku "https://heroku:${HEROKU_API_KEY}@git.heroku.com/${HEROKU_APP_NAME}.git"
-          git push heroku "HEAD:refs/heads/${HEROKU_REMOTE_BRANCH}" --force
-          DEPLOYED_AT="$(date -u +%Y%m%d-%H%M%S)"
-          SHORT_SHA="$(git rev-parse --short=7 HEAD)"
-          TAG_NAME="deploy/production/${DEPLOYED_AT}-${SHORT_SHA}"
-          git tag -a "${TAG_NAME}" -m "Deploy production to ${HEROKU_APP_NAME} from ${GITHUB_SHA}"
+          TAG_NAME="deploy/${{ inputs.environment_name }}/${DEPLOYED_AT}-${SHORT_SHA}"
+          git tag -a "${TAG_NAME}" -m "Deploy ${{ inputs.environment_name }} to ${HEROKU_APP_NAME} from ${GITHUB_SHA}"
           git push origin "${TAG_NAME}"

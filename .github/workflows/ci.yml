@@ -6,6 +6,9 @@ on:
       - main
       - staging
   pull_request:
+    branches:
+      - main
+      - staging
   workflow_dispatch:
     inputs:
       simulate_quality_failure:
@@ -13,6 +16,9 @@ on:
         type: boolean
         required: false
         default: false
+
+permissions:
+  contents: write
 
 jobs:
   unit_tests:
@@ -41,3 +47,29 @@ jobs:
     uses: ./.github/workflows/pmd.yml
     with:
       simulate_failure: ${{ github.event_name == 'workflow_dispatch' && inputs.simulate_quality_failure == true }}
+
+  deploy_staging:
+    name: CD - Staging
+    needs:
+      - unit_tests
+      - quality_checks
+    if: ${{ github.event_name == 'push' && github.ref_name == 'staging' }}
+    uses: ./.github/workflows/cd.yml
+    with:
+      environment_name: staging
+      environment_url: https://yomu-backend-staging-45829228a35b.herokuapp.com/
+      heroku_remote_branch: main
+    secrets: inherit
+
+  deploy_production:
+    name: CD - Production
+    needs:
+      - unit_tests
+      - quality_checks
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    uses: ./.github/workflows/cd.yml
+    with:
+      environment_name: production
+      environment_url: https://yomu-backend-78a746322ad9.herokuapp.com/
+      heroku_remote_branch: main
+    secrets: inherit
