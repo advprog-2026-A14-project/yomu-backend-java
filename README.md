@@ -2,6 +2,10 @@
 
 Backend utama untuk modul autentikasi, user management, bacaan-kuis, dan integrasi sinkronisasi ke Rust engine.
 
+## Link Deployment 
+- Link Production : [https://yomu-backend-78a746322ad9.herokuapp.com/]
+- Link Staging : [https://yomu-backend-staging-45829228a35b.herokuapp.com/]
+
 ## Prerequisites
 - Java 21
 - Docker Desktop + Docker Compose
