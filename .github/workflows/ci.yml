@@ -6,6 +6,9 @@ on:
       - main
       - staging
   pull_request:
+    branches:
+      - main
+      - staging
   workflow_dispatch:
     inputs:
       simulate_quality_failure:
@@ -13,6 +16,9 @@ on:
         type: boolean
         required: false
         default: false
+
+permissions:
+  contents: read
 
 jobs:
   unit_tests:

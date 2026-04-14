@@ -10,37 +10,47 @@ on:
       - main
       - staging
 
-jobs:
-  deploy_staging:
-    name: CD - Staging
-    runs-on: ubuntu-22.04
-    if: >
-      ${{
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'staging'
-      }}
-    environment: staging
-    steps:
-      - name: Check out the Git repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-      - name: Run dummy deploy script (staging)
-        run: bash .github/scripts/dummy-cd.sh staging
+permissions:
+  contents: write
 
-  deploy_production:
-    name: CD - Production
+concurrency:
+  group: cd-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy
     runs-on: ubuntu-22.04
     if: >
       ${{
+        github.event.workflow_run.event == 'push' &&
         github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'main'
+        (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'staging')
       }}
-    environment: production
+    environment:
+      name: ${{ github.event.workflow_run.head_branch == 'main' && 'production' || 'staging' }}
+      url: ${{ github.event.workflow_run.head_branch == 'main' && 'https://yomu-backend-78a746322ad9.herokuapp.com/' || 'https://yomu-backend-staging-45829228a35b.herokuapp.com/' }}
     steps:
       - name: Check out the Git repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-      - name: Run dummy deploy script (production)
-        run: bash .github/scripts/dummy-cd.sh production
+          fetch-depth: 0
+      - name: Deploy to Heroku
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+          HEROKU_REMOTE_BRANCH: main
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote remove heroku >/dev/null 2>&1 || true
+          git remote add heroku "https://heroku:${HEROKU_API_KEY}@git.heroku.com/${HEROKU_APP_NAME}.git"
+          git push heroku "HEAD:refs/heads/${HEROKU_REMOTE_BRANCH}" --force
+          DEPLOYED_AT="$(date -u +%Y%m%d-%H%M%S)"
+          SHORT_SHA="$(git rev-parse --short=7 HEAD)"
+          TARGET_ENV="${{ github.event.workflow_run.head_branch == 'main' && 'production' || 'staging' }}"
+          TAG_NAME="deploy/${TARGET_ENV}/${DEPLOYED_AT}-${SHORT_SHA}"
+          git tag -a "${TAG_NAME}" -m "Deploy ${TARGET_ENV} to ${HEROKU_APP_NAME} from ${{ github.event.workflow_run.head_sha }}"
+          git push origin "${TAG_NAME}"
