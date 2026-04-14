@@ -16,6 +16,10 @@ public class ArticleController {
     @Autowired
     private ArticleRepository articleRepository;
 
+    public ArticleController(ArticleRepository articleRepository) {
+        this.articleRepository = articleRepository;
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<Article>>> list() {
         List<Article> articles = articleRepository.findAll();

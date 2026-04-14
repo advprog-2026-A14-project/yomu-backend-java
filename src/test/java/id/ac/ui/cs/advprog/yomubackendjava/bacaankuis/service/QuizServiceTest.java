@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service;
 
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.UserAttemptRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,10 +27,12 @@ class QuizServiceTest {
         UUID userId = UUID.randomUUID();
         String kuisId = "kuis-123";
 
+        QuizSyncRequest request = new QuizSyncRequest(userId, kuisId, 100.0, 100.0);
+
         when(attemptRepository.existsByUserIdAndKuisId(userId, kuisId)).thenReturn(true);
 
         assertThrows(IllegalStateException.class, () -> {
-            quizService.completeQuiz(userId, kuisId, 100);
+            quizService.submitAndSync(request);
         });
     }
 }
