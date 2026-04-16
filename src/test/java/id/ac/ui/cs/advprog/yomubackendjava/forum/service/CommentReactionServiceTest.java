@@ -57,6 +57,8 @@ class CommentReactionServiceTest {
 
     @BeforeEach
     void setUp() {
+        SecurityContextHolder.clearContext();
+
         commentId = UUID.randomUUID();
         userId = UUID.randomUUID();
 

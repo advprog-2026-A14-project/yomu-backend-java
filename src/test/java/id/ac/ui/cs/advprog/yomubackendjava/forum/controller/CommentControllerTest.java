@@ -8,6 +8,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.CommentNotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.web.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.UnauthorizedCommentAccessException;
+import id.ac.ui.cs.advprog.yomubackendjava.forum.service.CommentReactionService;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.service.CommentService;
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
@@ -56,6 +57,9 @@ class CommentControllerTest {
 
     @MockitoBean
     private CommentService commentService;
+
+    @MockitoBean
+    private CommentReactionService reactionService;
 
     @Autowired
     private ObjectMapper objectMapper;

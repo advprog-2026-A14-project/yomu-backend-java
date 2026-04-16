@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.CommentNotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.UnauthorizedCommentAccessException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.Comment;
+import id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.repository.CommentRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
@@ -36,6 +37,9 @@ class CommentServiceTest {
 
     @Mock
     private CommentRepository commentRepository;
+
+    @Mock
+    private ICommentReactionService reactionService;
 
     @InjectMocks
     private CommentService commentService;
@@ -80,6 +84,7 @@ class CommentServiceTest {
         CreateCommentRequest request = new CreateCommentRequest(null, "Komentar baru");
 
         when(commentRepository.save(any(Comment.class))).thenReturn(sampleComment);
+        when(reactionService.getReactionCount(commentId, ReactionType.UPVOTE)).thenReturn(0);
 
         CommentResponse response = commentService.createComment(articleId, request);
 
@@ -115,6 +120,7 @@ class CommentServiceTest {
 
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
         when(commentRepository.save(any(Comment.class))).thenReturn(replyComment);
+        when(reactionService.getReactionCount(replyComment.getId(), ReactionType.UPVOTE)).thenReturn(0);
 
         CommentResponse response = commentService.createComment(articleId, request);
 
@@ -139,6 +145,7 @@ class CommentServiceTest {
     void getCommentsByArticle_shouldReturnRootComments() {
         when(commentRepository.findByArticleIdAndParentCommentIsNullOrderByCreatedAtDesc(articleId))
                 .thenReturn(List.of(sampleComment));
+        when(reactionService.getReactionCount(commentId, ReactionType.UPVOTE)).thenReturn(0);
 
         List<CommentResponse> responses = commentService.getCommentsByArticle(articleId);
 
@@ -171,6 +178,7 @@ class CommentServiceTest {
 
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
         when(commentRepository.save(any(Comment.class))).thenReturn(updatedComment);
+        when(reactionService.getReactionCount(commentId, ReactionType.UPVOTE)).thenReturn(0);
 
         CommentResponse response = commentService.updateComment(commentId, request);
 
