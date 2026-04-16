@@ -17,7 +17,7 @@ public class QuizService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final UserAttemptRepository attemptRepository;
 
-    @Value("${INTERNAL_API_KEY}")
+    @Value("${INTERNAL_API_KEY:}")
     private String apiKey;
 
     public QuizService(UserAttemptRepository attemptRepository) {
