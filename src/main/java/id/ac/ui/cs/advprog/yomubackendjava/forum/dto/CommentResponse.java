@@ -34,5 +34,8 @@ public class CommentResponse {
     @JsonProperty("created_at")
     private Instant createdAt;
 
+    @JsonProperty("reaction_count")
+    private int reactionCount;
+
     private List<CommentResponse> replies;
 }

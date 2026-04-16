@@ -7,9 +7,11 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.CommentNotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.UnauthorizedCommentAccessException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.Comment;
+import id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.repository.CommentRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.security.CurrentUser;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,15 +21,22 @@ import java.util.stream.Collectors;
 @Service
 public class CommentService {
 
-    private final CommentRepository commentRepository;
+    private static final String LOGIN_REQUIRED_MESSAGE = "Login diperlukan";
 
-    public CommentService(CommentRepository commentRepository) {
+    private final CommentRepository commentRepository;
+    private final ICommentReactionService reactionService;
+
+    public CommentService(
+            CommentRepository commentRepository,
+            @Lazy ICommentReactionService reactionService
+    ) {
         this.commentRepository = commentRepository;
+        this.reactionService = reactionService;
     }
 
     public CommentResponse createComment(UUID articleId, CreateCommentRequest request) {
         UUID userId = CurrentUser.userId()
-                .orElseThrow(() -> new UnauthorizedException("Login diperlukan"));
+                .orElseThrow(() -> new UnauthorizedException(LOGIN_REQUIRED_MESSAGE));
 
         Comment comment = new Comment();
         comment.setArticleId(articleId);
@@ -54,7 +63,7 @@ public class CommentService {
 
     public CommentResponse updateComment(UUID commentId, UpdateCommentRequest request) {
         UUID userId = CurrentUser.userId()
-                .orElseThrow(() -> new UnauthorizedException("Login diperlukan"));
+                .orElseThrow(() -> new UnauthorizedException(LOGIN_REQUIRED_MESSAGE));
 
         Comment comment = findCommentOrThrow(commentId);
         validateOwnership(comment, userId);
@@ -66,7 +75,7 @@ public class CommentService {
 
     public void deleteComment(UUID commentId) {
         UUID userId = CurrentUser.userId()
-                .orElseThrow(() -> new UnauthorizedException("Login diperlukan"));
+                .orElseThrow(() -> new UnauthorizedException(LOGIN_REQUIRED_MESSAGE));
         Role role = CurrentUser.role().orElse(Role.PELAJAR);
 
         Comment comment = findCommentOrThrow(commentId);
@@ -92,6 +101,8 @@ public class CommentService {
                 ? comment.getParentComment().getId()
                 : null;
 
+        int reactionCount = reactionService.getReactionCount(comment.getId(), ReactionType.UPVOTE);
+
         return CommentResponse.builder()
                 .id(comment.getId())
                 .articleId(comment.getArticleId())
@@ -99,6 +110,7 @@ public class CommentService {
                 .parentCommentId(parentId)
                 .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
+                .reactionCount(reactionCount)
                 .build();
     }
 
@@ -111,6 +123,8 @@ public class CommentService {
                 ? comment.getParentComment().getId()
                 : null;
 
+        int reactionCount = reactionService.getReactionCount(comment.getId(), ReactionType.UPVOTE);
+
         return CommentResponse.builder()
                 .id(comment.getId())
                 .articleId(comment.getArticleId())
@@ -118,6 +132,7 @@ public class CommentService {
                 .parentCommentId(parentId)
                 .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
+                .reactionCount(reactionCount)
                 .replies(replyResponses)
                 .build();
     }
