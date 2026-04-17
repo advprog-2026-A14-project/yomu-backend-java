@@ -1,8 +1,8 @@
 package id.ac.ui.cs.advprog.yomubackendjava.outbox;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.AuthUserSyncService;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
-import id.ac.ui.cs.advprog.yomubackendjava.integration.rust.RustEngineClient;
 import id.ac.ui.cs.advprog.yomubackendjava.outbox.domain.FailedSyncEventEntity;
 import id.ac.ui.cs.advprog.yomubackendjava.outbox.domain.SyncEventStatus;
 import id.ac.ui.cs.advprog.yomubackendjava.outbox.domain.SyncEventType;
@@ -20,22 +20,20 @@ import java.util.function.Predicate;
 
 @Service
 public class OutboxRetryService {
-    private static final int RUST_SYNC_CREATED_STATUS = 201;
-    private static final int RUST_SYNC_CONFLICT_STATUS = 409;
     private static final String RETRY_REQUEST_REQUIRED_MESSAGE = "event_ids atau retry_all wajib diisi";
     private static final String USER_ID_PAYLOAD_INVALID_MESSAGE = "payload user_id tidak valid";
     private static final Pattern USER_ID_PATTERN = Pattern.compile("\"user_id\"\\s*:\\s*\"([^\"]+)\"");
     private static final List<SyncEventStatus> RETRYABLE_STATUSES = List.of(SyncEventStatus.FAILED, SyncEventStatus.PENDING);
 
     private final FailedSyncEventRepository failedSyncEventRepository;
-    private final RustEngineClient rustEngineClient;
+    private final AuthUserSyncService authUserSyncService;
 
     public OutboxRetryService(
             FailedSyncEventRepository failedSyncEventRepository,
-            RustEngineClient rustEngineClient
+            AuthUserSyncService authUserSyncService
     ) {
         this.failedSyncEventRepository = failedSyncEventRepository;
-        this.rustEngineClient = rustEngineClient;
+        this.authUserSyncService = authUserSyncService;
     }
 
     public FailedSyncEventsData listFailedSyncEvents() {
@@ -100,13 +98,13 @@ public class OutboxRetryService {
 
         try {
             UUID userId = extractUserId(event.getPayloadJson());
-            RustEngineClient.SyncResult result = rustEngineClient.syncUser(userId);
-            if (result.statusCode() == RUST_SYNC_CREATED_STATUS || result.statusCode() == RUST_SYNC_CONFLICT_STATUS) {
+            AuthUserSyncService.SyncAttemptResult result = authUserSyncService.retryUserSync(userId);
+            if (result.succeeded()) {
                 markDone(event);
                 return SyncEventStatus.DONE;
             }
 
-            markFailed(event, "status=" + result.statusCode() + " body=" + result.responseBody());
+            markFailed(event, result.errorMessage());
             return SyncEventStatus.FAILED;
         } catch (RuntimeException ex) {
             markFailed(event, ex.getMessage() == null ? "retry gagal" : ex.getMessage());

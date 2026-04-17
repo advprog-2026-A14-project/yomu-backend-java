@@ -39,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(RegisterRustSyncTest.MockBeans.class)
 class RegisterRustSyncTest {
     private static final String REGISTER_PATH = "/api/v1/auth/register";
+    private static final String SUCCESS_JSON_PATH = "$.success";
 
     @Autowired
     private MockMvc mockMvc;
@@ -66,7 +67,7 @@ class RegisterRustSyncTest {
 
         mockMvc.perform(post(REGISTER_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "username": "sync201",
                                   "display_name": "Sync 201",
@@ -75,7 +76,7 @@ class RegisterRustSyncTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
         verify(rustEngineClient, times(1)).syncUser(any(UUID.class));
         assertThat(failedSyncEventRepository.count()).isZero();
@@ -88,7 +89,7 @@ class RegisterRustSyncTest {
 
         mockMvc.perform(post(REGISTER_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "username": "sync409",
                                   "display_name": "Sync 409",
@@ -97,7 +98,7 @@ class RegisterRustSyncTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
         verify(rustEngineClient, times(1)).syncUser(any(UUID.class));
         assertThat(failedSyncEventRepository.count()).isZero();
@@ -110,7 +111,7 @@ class RegisterRustSyncTest {
 
         mockMvc.perform(post(REGISTER_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "username": "synctimeout",
                                   "display_name": "Sync Timeout",
@@ -119,9 +120,9 @@ class RegisterRustSyncTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
-        verify(rustEngineClient, times(1)).syncUser(any(UUID.class));
+        verify(rustEngineClient, times(2)).syncUser(any(UUID.class));
 
         List<FailedSyncEventEntity> events = failedSyncEventRepository.findAll();
         assertThat(events).hasSize(1);
@@ -129,6 +130,29 @@ class RegisterRustSyncTest {
         assertThat(event.getEventType()).isEqualTo(SyncEventType.USER_SYNC);
         assertThat(event.getStatus()).isEqualTo(SyncEventStatus.FAILED);
         assertThat(event.getPayloadJson()).contains("user_id");
+    }
+
+    @Test
+    void registerShouldRetryRustSyncBeforeCreatingOutbox() throws Exception {
+        when(rustEngineClient.syncUser(any(UUID.class)))
+                .thenThrow(new RestClientException("timeout/down"))
+                .thenReturn(new RustEngineClient.SyncResult(201, "created"));
+
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(APPLICATION_JSON)
+                .content("""
+                                {
+                                  "username": "syncretry",
+                                  "display_name": "Sync Retry",
+                                  "password": "rahasia123",
+                                  "email": "syncretry@example.com"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
+
+        verify(rustEngineClient, times(2)).syncUser(any(UUID.class));
+        assertThat(failedSyncEventRepository.count()).isZero();
     }
 
     @TestConfiguration
