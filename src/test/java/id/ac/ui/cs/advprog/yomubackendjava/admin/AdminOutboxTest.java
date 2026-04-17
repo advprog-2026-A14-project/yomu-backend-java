@@ -42,6 +42,11 @@ class AdminOutboxTest {
     private static final String ADMIN_RETRY_PATH = "/api/v1/admin/failed-sync-events/retry";
     private static final String SUCCESS_JSON_PATH = "$.success";
     private static final String MESSAGE_JSON_PATH = "$.message";
+    private static final String EVENT_IDS_JSON = """
+            {
+              "event_ids": [%d]
+            }
+            """;
 
     @Autowired
     private MockMvc mockMvc;
@@ -90,11 +95,7 @@ class AdminOutboxTest {
         mockMvc.perform(post(ADMIN_RETRY_PATH)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
                         .contentType(APPLICATION_JSON)
-                .content("""
-                                {
-                                  "event_ids": [%d]
-                                }
-                                """.formatted(event.getEventId())))
+                .content(EVENT_IDS_JSON.formatted(event.getEventId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
@@ -111,11 +112,7 @@ class AdminOutboxTest {
         mockMvc.perform(post(ADMIN_RETRY_PATH)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
                         .contentType(APPLICATION_JSON)
-                .content("""
-                                {
-                                  "event_ids": [%d]
-                                }
-                                """.formatted(event.getEventId())))
+                .content(EVENT_IDS_JSON.formatted(event.getEventId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
@@ -132,11 +129,7 @@ class AdminOutboxTest {
         mockMvc.perform(post(ADMIN_RETRY_PATH)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
                         .contentType(APPLICATION_JSON)
-                .content("""
-                                {
-                                  "event_ids": [%d]
-                                }
-                                """.formatted(event.getEventId())))
+                .content(EVENT_IDS_JSON.formatted(event.getEventId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
@@ -156,11 +149,7 @@ class AdminOutboxTest {
         mockMvc.perform(post(ADMIN_RETRY_PATH)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
                         .contentType(APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "event_ids": [%d]
-                                }
-                                """.formatted(event.getEventId())))
+                        .content(EVENT_IDS_JSON.formatted(event.getEventId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
@@ -180,11 +169,7 @@ class AdminOutboxTest {
         mockMvc.perform(post(ADMIN_RETRY_PATH)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
                         .contentType(APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "event_ids": [%d]
-                                }
-                                """.formatted(event.getEventId())))
+                        .content(EVENT_IDS_JSON.formatted(event.getEventId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 

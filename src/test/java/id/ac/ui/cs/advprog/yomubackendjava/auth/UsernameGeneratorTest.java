@@ -10,6 +10,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class UsernameGeneratorTest {
+    private static final String DEFAULT_GOOGLE_USERNAME = "google_user";
+
     private final UserRepository userRepository = mock(UserRepository.class);
     private final UsernameGenerator usernameGenerator = new UsernameGenerator(userRepository);
 
@@ -19,7 +21,7 @@ class UsernameGeneratorTest {
 
         String result = usernameGenerator.generateFromEmail("google.user@example.com");
 
-        assertEquals("google_user", result);
+        assertEquals(DEFAULT_GOOGLE_USERNAME, result);
     }
 
     @Test
@@ -34,19 +36,19 @@ class UsernameGeneratorTest {
 
     @Test
     void shouldUseDefaultBaseWhenEmailMissing() {
-        when(userRepository.findByUsername("google_user")).thenReturn(Optional.empty());
+        when(userRepository.findByUsername(DEFAULT_GOOGLE_USERNAME)).thenReturn(Optional.empty());
 
         String result = usernameGenerator.generateFromEmail(null);
 
-        assertEquals("google_user", result);
+        assertEquals(DEFAULT_GOOGLE_USERNAME, result);
     }
 
     @Test
     void shouldFallbackToDefaultBaseWhenPrefixSanitizedToBlank() {
-        when(userRepository.findByUsername("google_user")).thenReturn(Optional.empty());
+        when(userRepository.findByUsername(DEFAULT_GOOGLE_USERNAME)).thenReturn(Optional.empty());
 
         String result = usernameGenerator.generateFromEmail("!!!@example.com");
 
-        assertEquals("google_user", result);
+        assertEquals(DEFAULT_GOOGLE_USERNAME, result);
     }
 }

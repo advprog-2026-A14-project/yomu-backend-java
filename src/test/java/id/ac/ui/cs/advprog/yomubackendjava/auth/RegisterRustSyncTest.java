@@ -39,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(RegisterRustSyncTest.MockBeans.class)
 class RegisterRustSyncTest {
     private static final String REGISTER_PATH = "/api/v1/auth/register";
+    private static final String SUCCESS_JSON_PATH = "$.success";
 
     @Autowired
     private MockMvc mockMvc;
@@ -66,7 +67,7 @@ class RegisterRustSyncTest {
 
         mockMvc.perform(post(REGISTER_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "username": "sync201",
                                   "display_name": "Sync 201",
@@ -75,7 +76,7 @@ class RegisterRustSyncTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
         verify(rustEngineClient, times(1)).syncUser(any(UUID.class));
         assertThat(failedSyncEventRepository.count()).isZero();
@@ -88,7 +89,7 @@ class RegisterRustSyncTest {
 
         mockMvc.perform(post(REGISTER_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "username": "sync409",
                                   "display_name": "Sync 409",
@@ -97,7 +98,7 @@ class RegisterRustSyncTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
         verify(rustEngineClient, times(1)).syncUser(any(UUID.class));
         assertThat(failedSyncEventRepository.count()).isZero();
@@ -110,7 +111,7 @@ class RegisterRustSyncTest {
 
         mockMvc.perform(post(REGISTER_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "username": "synctimeout",
                                   "display_name": "Sync Timeout",
@@ -119,7 +120,7 @@ class RegisterRustSyncTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
         verify(rustEngineClient, times(2)).syncUser(any(UUID.class));
 
@@ -139,7 +140,7 @@ class RegisterRustSyncTest {
 
         mockMvc.perform(post(REGISTER_PATH)
                         .contentType(APPLICATION_JSON)
-                        .content("""
+                .content("""
                                 {
                                   "username": "syncretry",
                                   "display_name": "Sync Retry",
@@ -148,7 +149,7 @@ class RegisterRustSyncTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
 
         verify(rustEngineClient, times(2)).syncUser(any(UUID.class));
         assertThat(failedSyncEventRepository.count()).isZero();

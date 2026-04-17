@@ -45,6 +45,7 @@ class GoogleLoginTest {
     private static final String GOOGLE_LOGIN_PATH = "/api/v1/auth/google";
     private static final String SUCCESS_JSON_PATH = "$.success";
     private static final String MESSAGE_JSON_PATH = "$.message";
+    private static final String IS_NEW_USER_PATH = "$.data.is_new_user";
 
     @Autowired
     private MockMvc mockMvc;
@@ -101,7 +102,7 @@ class GoogleLoginTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
-                .andExpect(jsonPath("$.data.is_new_user").value(true))
+                .andExpect(jsonPath(IS_NEW_USER_PATH).value(true))
                 .andExpect(jsonPath("$.data.access_token").isNotEmpty())
                 .andExpect(jsonPath("$.data.user.role").value("PELAJAR"));
 
@@ -134,7 +135,7 @@ class GoogleLoginTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
-                .andExpect(jsonPath("$.data.is_new_user").value(false))
+                .andExpect(jsonPath(IS_NEW_USER_PATH).value(false))
                 .andExpect(jsonPath("$.data.user.user_id").value(existing.getUserId().toString()));
 
         assertThat(userRepository.count()).isEqualTo(1L);
@@ -157,7 +158,7 @@ class GoogleLoginTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
-                .andExpect(jsonPath("$.data.is_new_user").value(true));
+                .andExpect(jsonPath(IS_NEW_USER_PATH).value(true));
 
         List<FailedSyncEventEntity> events = failedSyncEventRepository.findAll();
         assertThat(events).hasSize(1);
@@ -185,7 +186,7 @@ class GoogleLoginTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
-                .andExpect(jsonPath("$.data.is_new_user").value(true));
+                .andExpect(jsonPath(IS_NEW_USER_PATH).value(true));
 
         verify(rustEngineClient, times(2)).syncUser(any(UUID.class));
         assertThat(failedSyncEventRepository.count()).isZero();
