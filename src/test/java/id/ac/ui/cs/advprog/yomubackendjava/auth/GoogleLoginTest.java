@@ -168,6 +168,30 @@ class GoogleLoginTest {
     }
 
     @Test
+    void firstLoginShouldRetryRustSyncBeforeCreatingOutbox() throws Exception {
+        when(googleIdTokenVerifier.verify("google-rust-retry"))
+                .thenReturn(new GoogleProfile("gsub-rust-retry", "rust.retry@example.com", "Rust Retry"));
+        when(rustEngineClient.syncUser(any(UUID.class)))
+                .thenThrow(new RestClientException("timeout/down"))
+                .thenReturn(new RustEngineClient.SyncResult(201, "created"));
+
+        mockMvc.perform(post(GOOGLE_LOGIN_PATH)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "id_token": "google-rust-retry",
+                                  "username": "google_rust_retry"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
+                .andExpect(jsonPath("$.data.is_new_user").value(true));
+
+        verify(rustEngineClient, times(2)).syncUser(any(UUID.class));
+        assertThat(failedSyncEventRepository.count()).isZero();
+    }
+
+    @Test
     void usernameConflictOnFirstLoginShouldReturn409() throws Exception {
         UserEntity existing = new UserEntity();
         existing.setUsername("taken_username");

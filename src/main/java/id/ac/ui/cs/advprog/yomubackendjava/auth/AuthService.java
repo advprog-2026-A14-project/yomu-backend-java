@@ -11,8 +11,6 @@ import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
-import id.ac.ui.cs.advprog.yomubackendjava.integration.rust.RustEngineClient;
-import id.ac.ui.cs.advprog.yomubackendjava.outbox.OutboxService;
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
 import id.ac.ui.cs.advprog.yomubackendjava.user.UserMapper;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
@@ -21,16 +19,11 @@ import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class AuthService {
-    private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
     private static final String REGISTER_SUCCESS_MESSAGE = "Registrasi berhasil";
     private static final String IDENTIFIER_REQUIRED_MESSAGE = "email atau phone_number wajib diisi";
     private static final String USERNAME_USED_MESSAGE = "username sudah digunakan";
@@ -44,8 +37,6 @@ public class AuthService {
     private static final String GOOGLE_LOGIN_SUCCESS_MESSAGE = "Login Google berhasil";
     private static final String GOOGLE_TOKEN_INVALID_MESSAGE = "id_token tidak valid";
     private static final String GOOGLE_SUB_INVALID_MESSAGE = "google_sub tidak valid";
-    private static final int RUST_SYNC_CREATED_STATUS = 201;
-    private static final int RUST_SYNC_CONFLICT_STATUS = 409;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -54,8 +45,7 @@ public class AuthService {
     private final IdentifierResolver identifierResolver;
     private final UsernameGenerator usernameGenerator;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
-    private final RustEngineClient rustEngineClient;
-    private final OutboxService outboxService;
+    private final AuthUserSyncService authUserSyncService;
 
     public AuthService(
             UserRepository userRepository,
@@ -65,8 +55,7 @@ public class AuthService {
             IdentifierResolver identifierResolver,
             UsernameGenerator usernameGenerator,
             GoogleIdTokenVerifier googleIdTokenVerifier,
-            RustEngineClient rustEngineClient,
-            OutboxService outboxService
+            AuthUserSyncService authUserSyncService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -75,8 +64,7 @@ public class AuthService {
         this.identifierResolver = identifierResolver;
         this.usernameGenerator = usernameGenerator;
         this.googleIdTokenVerifier = googleIdTokenVerifier;
-        this.rustEngineClient = rustEngineClient;
-        this.outboxService = outboxService;
+        this.authUserSyncService = authUserSyncService;
     }
 
     public ApiResponse<AuthResponseData> registerLocal(RegisterRequest request) {
@@ -103,7 +91,7 @@ public class AuthService {
             throw new ConflictException(GENERIC_CONFLICT_MESSAGE);
         }
 
-        syncUserToRust(savedUser.getUserId());
+        authUserSyncService.syncNewUser(savedUser.getUserId());
 
         String accessToken = jwtService.generateToken(savedUser.getUserId(), savedUser.getRole());
         AuthResponseData responseData = new AuthResponseData(accessToken, userMapper.toUserDto(savedUser));
@@ -154,28 +142,8 @@ public class AuthService {
             throw new ConflictException(GENERIC_CONFLICT_MESSAGE);
         }
 
-        syncUserToRust(savedUser.getUserId());
+        authUserSyncService.syncNewUser(savedUser.getUserId());
         return buildGoogleLoginResponse(savedUser, true);
-    }
-
-    private void syncUserToRust(UUID userId) {
-        try {
-            RustEngineClient.SyncResult syncResult = rustEngineClient.syncUser(userId);
-            if (syncResult.statusCode() == RUST_SYNC_CREATED_STATUS
-                    || syncResult.statusCode() == RUST_SYNC_CONFLICT_STATUS) {
-                return;
-            }
-
-            String errorMessage = "status=" + syncResult.statusCode() + " body=" + syncResult.responseBody();
-            LOGGER.error("Rust sync gagal untuk user_id={} {}", userId, errorMessage);
-            outboxService.recordUserSyncFailure(userId, errorMessage);
-        } catch (RestClientException ex) {
-            LOGGER.error("Rust sync exception untuk user_id={}", userId, ex);
-            outboxService.recordUserSyncFailure(userId, ex.getMessage());
-        } catch (RuntimeException ex) {
-            LOGGER.error("Rust sync runtime exception untuk user_id={}", userId, ex);
-            outboxService.recordUserSyncFailure(userId, ex.getMessage());
-        }
     }
 
     private void validateRegisterIdentifiers(String email, String phoneNumber) {

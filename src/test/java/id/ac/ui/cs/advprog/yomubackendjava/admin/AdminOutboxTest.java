@@ -24,6 +24,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -141,6 +143,54 @@ class AdminOutboxTest {
         FailedSyncEventEntity updated = failedSyncEventRepository.findById(event.getEventId()).orElseThrow();
         assertThat(updated.getStatus()).isEqualTo(SyncEventStatus.FAILED);
         assertThat(updated.getRetryCount()).isEqualTo(2);
+    }
+
+    @Test
+    void retryShouldReuseAuthRetryPolicy() throws Exception {
+        UUID userId = UUID.randomUUID();
+        FailedSyncEventEntity event = failedSyncEventRepository.saveAndFlush(buildEvent(userId, SyncEventStatus.FAILED, 0));
+        when(rustEngineClient.syncUser(userId))
+                .thenThrow(new RuntimeException("timeout/down"))
+                .thenReturn(new RustEngineClient.SyncResult(201, "created"));
+
+        mockMvc.perform(post(ADMIN_RETRY_PATH)
+                        .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "event_ids": [%d]
+                                }
+                                """.formatted(event.getEventId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
+
+        FailedSyncEventEntity updated = failedSyncEventRepository.findById(event.getEventId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(SyncEventStatus.FAILED);
+        verify(rustEngineClient, times(1)).syncUser(userId);
+    }
+
+    @Test
+    void retryShouldAttemptTransientRustFailureTwice() throws Exception {
+        UUID userId = UUID.randomUUID();
+        FailedSyncEventEntity event = failedSyncEventRepository.saveAndFlush(buildEvent(userId, SyncEventStatus.FAILED, 0));
+        when(rustEngineClient.syncUser(userId))
+                .thenThrow(new org.springframework.web.client.RestClientException("timeout/down"))
+                .thenReturn(new RustEngineClient.SyncResult(201, "created"));
+
+        mockMvc.perform(post(ADMIN_RETRY_PATH)
+                        .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "event_ids": [%d]
+                                }
+                                """.formatted(event.getEventId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
+
+        FailedSyncEventEntity updated = failedSyncEventRepository.findById(event.getEventId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(SyncEventStatus.DONE);
+        verify(rustEngineClient, times(2)).syncUser(userId);
     }
 
     private String bearerToken(Role role) {
