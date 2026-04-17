@@ -1,0 +1,86 @@
+
+C:\Adpro\yomu-backend-java>if "Windows_NT" == "Windows_NT" setlocal
+
+C:\Adpro\yomu-backend-java>set DIRNAME=C:\Adpro\yomu-backend-java\ 
+
+C:\Adpro\yomu-backend-java>if "C:\Adpro\yomu-backend-java\" == "" set DIRNAME=. 
+
+C:\Adpro\yomu-backend-java>set APP_BASE_NAME=gradlew 
+
+C:\Adpro\yomu-backend-java>set APP_HOME=C:\Adpro\yomu-backend-java\ 
+
+C:\Adpro\yomu-backend-java>for %i in ("C:\Adpro\yomu-backend-java\") do set APP_HOME=%~fi 
+
+C:\Adpro\yomu-backend-java>set APP_HOME=C:\Adpro\yomu-backend-java\ 
+
+C:\Adpro\yomu-backend-java>set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m" 
+
+C:\Adpro\yomu-backend-java>if defined JAVA_HOME goto findJavaFromJavaHome 
+
+C:\Adpro\yomu-backend-java>set JAVA_HOME=C:\Program Files\Java\jdk-21 
+
+C:\Adpro\yomu-backend-java>set JAVA_EXE=C:\Program Files\Java\jdk-21/bin/java.exe 
+
+C:\Adpro\yomu-backend-java>if exist "C:\Program Files\Java\jdk-21/bin/java.exe" goto execute 
+
+C:\Adpro\yomu-backend-java>"C:\Program Files\Java\jdk-21/bin/java.exe" "-Xmx64m" "-Xms64m"   "-Dorg.gradle.appname=gradlew" -jar "C:\Adpro\yomu-backend-java\\gradle\wrapper\gradle-wrapper.jar" bootRun 
+> Task :compileJava UP-TO-DATE
+> Task :processResources
+> Task :classes
+> Task :resolveMainClassName
+
+> Task :bootRun
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.0.2)
+
+2026-04-16T11:14:25.937+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] i.a.u.c.a.y.YomuBackendJavaApplication   : Starting YomuBackendJavaApplication using Java 21.0.7 with PID 20564 (C:\Adpro\yomu-backend-java\build\classes\java\main started by LENOVO in C:\Adpro\yomu-backend-java)
+2026-04-16T11:14:25.969+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] i.a.u.c.a.y.YomuBackendJavaApplication   : No active profile set, falling back to 1 default profile: "default"
+2026-04-16T11:14:25.972+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.boot.SpringApplication               : Loading source class id.ac.ui.cs.advprog.yomubackendjava.YomuBackendJavaApplication
+2026-04-16T11:14:26.214+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.devtools.restart.ChangeableUrls    : Matching URLs for reloading : [file:/C:/Adpro/yomu-backend-java/build/classes/java/main/, file:/C:/Adpro/yomu-backend-java/build/resources/main/]
+2026-04-16T11:14:26.215+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.d.settings.DevToolsSettings        : Included patterns for restart : []
+2026-04-16T11:14:26.215+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.d.settings.DevToolsSettings        : Excluded patterns for restart : [/spring-boot-starter-[\w-]+/, /spring-boot/(bin|build|out)/, /spring-boot-starter/(bin|build|out)/, /spring-boot-devtools/(bin|build|out)/, /spring-boot-actuator/(bin|build|out)/, /spring-boot-autoconfigure/(bin|build|out)/]
+2026-04-16T11:14:26.215+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2026-04-16T11:14:26.215+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2026-04-16T11:14:26.217+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] ConfigServletWebServerApplicationContext : Refreshing org.springframework.boot.web.server.servlet.context.AnnotationConfigServletWebServerApplicationContext@2a4de06c
+2026-04-16T11:14:30.517+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-16T11:14:30.605+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.a.AutoConfigurationPackages        : @EnableAutoConfiguration was declared on a class in the package 'id.ac.ui.cs.advprog.yomubackendjava'. Automatic @Repository and @Entity scanning is enabled.
+2026-04-16T11:14:30.863+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 301 ms. Found 5 JPA repository interfaces.
+2026-04-16T11:14:33.458+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.t.s.TomcatServletWebServerFactory  : Code archive: C:\Users\LENOVO\.gradle\caches\modules-2\files-2.1\org.springframework.boot\spring-boot-web-server\4.0.2\1cfc0adecf312f1d94a837d7a3adabe9ae8b5594\spring-boot-web-server-4.0.2.jar
+2026-04-16T11:14:33.460+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.t.s.TomcatServletWebServerFactory  : Code archive: C:\Users\LENOVO\.gradle\caches\modules-2\files-2.1\org.springframework.boot\spring-boot-web-server\4.0.2\1cfc0adecf312f1d94a837d7a3adabe9ae8b5594\spring-boot-web-server-4.0.2.jar
+2026-04-16T11:14:33.463+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.t.s.TomcatServletWebServerFactory  : None of the document roots [src/main/webapp, public, static] point to a directory and will be ignored.
+2026-04-16T11:14:33.709+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8081 (http)
+2026-04-16T11:14:33.830+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-04-16T11:14:33.833+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.15]
+2026-04-16T11:14:34.155+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] b.w.c.s.WebApplicationContextInitializer : Published root WebApplicationContext as ServletContext attribute with name [org.springframework.web.context.WebApplicationContext.ROOT]
+2026-04-16T11:14:34.164+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 7940 ms
+2026-04-16T11:14:34.368+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.w.s.ServletContextInitializerBeans : Mapping filters: springSecurityFilterChain urls=[/*] order=-100, characterEncodingFilter urls=[/*] order=-2147483648, formContentFilter urls=[/*] order=-9900, requestContextFilter urls=[/*] order=-105, jwtAuthFilter urls=[/*] order=2147483647
+2026-04-16T11:14:34.369+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.w.s.ServletContextInitializerBeans : Mapping servlets: dispatcherServlet urls=[/]
+2026-04-16T11:14:34.498+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.s.f.OrderedRequestContextFilter    : Filter 'requestContextFilter' configured for use
+2026-04-16T11:14:34.507+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.s.f.OrderedCharacterEncodingFilter : Filter 'characterEncodingFilter' configured for use
+2026-04-16T11:14:34.508+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] .DelegatingFilterProxyRegistrationBean$1 : Filter 'springSecurityFilterChain' configured for use
+2026-04-16T11:14:34.509+07:00 DEBUG 20564 --- [yomu-backend-java] [  restartedMain] o.s.b.s.filter.OrderedFormContentFilter  : Filter 'formContentFilter' configured for use
+2026-04-16T11:14:35.246+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-04-16T11:14:35.605+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.2.1.Final
+2026-04-16T11:14:38.164+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-16T11:14:38.330+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-04-16T11:14:39.012+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@5d35ab5f
+2026-04-16T11:14:39.017+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-04-16T11:14:39.278+07:00  INFO 20564 --- [yomu-backend-java] [  restartedMain] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:postgresql://localhost:5433/yomu_db]
+	Database driver: PostgreSQL JDBC Driver
+	Database dialect: PostgreSQLDialect
+	Database version: 15.16
+	Default catalog/schema: yomu_db/public
+	Autocommit mode: undefined/unknown
+	Isolation level: READ_COMMITTED [default READ_COMMITTED]
+	JDBC fetch size: none
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown

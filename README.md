@@ -40,6 +40,15 @@ docker compose up -d
 docker compose ps
 ```
 
+Local database sekarang memakai image `postgres:18-alpine` agar konsisten dengan service Rust dan lebih ringan untuk development. Konfigurasi database, port, username, dan nama database tetap sama seperti setup PostgreSQL 15, jadi output aplikasi seharusnya tetap setara selama schema dan env tidak berubah.
+
+Jika sebelumnya pernah menjalankan PostgreSQL 15 di volume lokal yang sama, reset volume saat migrasi major version:
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
 Container database expose port:
 - Host: `localhost:5433`
 - Container: `5432`
