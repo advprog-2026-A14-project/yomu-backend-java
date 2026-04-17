@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.auth.google;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StreamUtils;
@@ -27,6 +28,7 @@ public class RestGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
     private final RestClient restClient;
     private final String expectedAudience;
 
+    @Autowired
     public RestGoogleIdTokenVerifier(@Value("${google.oauth.client-id:}") String expectedAudience) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
@@ -39,6 +41,11 @@ public class RestGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
                 .baseUrl("https://oauth2.googleapis.com")
                 .requestFactory(requestFactory)
                 .build();
+        this.expectedAudience = normalize(expectedAudience);
+    }
+
+    RestGoogleIdTokenVerifier(RestClient restClient, String expectedAudience) {
+        this.restClient = restClient;
         this.expectedAudience = normalize(expectedAudience);
     }
 
