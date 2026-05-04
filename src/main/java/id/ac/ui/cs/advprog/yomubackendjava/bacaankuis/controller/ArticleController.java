@@ -1,9 +1,8 @@
 package id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.controller;
 
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.Article;
-import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.ArticleRepository;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service.ArticleService;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,23 +12,21 @@ import java.util.List;
 @RequestMapping("/api/v1/articles")
 public class ArticleController {
 
-    @Autowired
-    private ArticleRepository articleRepository;
+    private final ArticleService articleService;
 
-    public ArticleController(ArticleRepository articleRepository) {
-        this.articleRepository = articleRepository;
+    public ArticleController(ArticleService articleService) {
+        this.articleService = articleService;
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Article>>> list() {
-        List<Article> articles = articleRepository.findAll();
+        List<Article> articles = articleService.findAll();
         return ResponseEntity.ok(ApiResponse.success("Daftar bacaan", articles));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Article>> detail(@PathVariable String id) {
-        return articleRepository.findById(id)
-                .map(a -> ResponseEntity.ok(ApiResponse.success("Detail bacaan", a)))
-                .orElse(ResponseEntity.notFound().build());
+        Article article = articleService.findById(id);
+        return ResponseEntity.ok(ApiResponse.success("Detail bacaan", article));
     }
 }
