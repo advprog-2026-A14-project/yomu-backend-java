@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service;
 
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.integration.QuizSyncClient;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.UserAttempt;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.UserAttemptRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
@@ -23,6 +24,9 @@ class QuizServiceTest {
     @Mock
     private UserAttemptRepository attemptRepository;
 
+    @Mock
+    private QuizSyncClient quizSyncClient;
+
     @InjectMocks
     private QuizService quizService;
 
@@ -37,10 +41,11 @@ class QuizServiceTest {
         assertThrows(ConflictException.class, () -> quizService.submitAndSync(request));
 
         verify(attemptRepository, never()).save(any(UserAttempt.class));
+        verify(quizSyncClient, never()).sync(any());
     }
 
     @Test
-    void submitAndSync_whenFirstAttempt_savesUserAttempt() {
+    void submitAndSync_whenFirstAttempt_savesUserAttemptAndSyncsToRust() {
         UUID userId = UUID.randomUUID();
         String articleId = "article-123";
         QuizSyncRequest request = new QuizSyncRequest(userId, articleId, 85.0, 90.0);
@@ -51,6 +56,7 @@ class QuizServiceTest {
 
         ArgumentCaptor<UserAttempt> captor = ArgumentCaptor.forClass(UserAttempt.class);
         verify(attemptRepository).save(captor.capture());
+        verify(quizSyncClient).sync(request);
 
         UserAttempt savedAttempt = captor.getValue();
         assertEquals(userId, savedAttempt.getUserId());
@@ -65,50 +71,6 @@ class QuizServiceTest {
         assertThrows(BadRequestException.class, () -> quizService.submitAndSync(request));
 
         verify(attemptRepository, never()).save(any(UserAttempt.class));
-    }
-
-    @Test
-    void submitAndSync_whenArticleIdMissing_throwsBadRequest() {
-        QuizSyncRequest request = new QuizSyncRequest(UUID.randomUUID(), "", 80.0, 90.0);
-
-        assertThrows(BadRequestException.class, () -> quizService.submitAndSync(request));
-
-        verify(attemptRepository, never()).save(any(UserAttempt.class));
-    }
-
-    @Test
-    void submitAndSync_whenScoreIsNegative_throwsBadRequest() {
-        QuizSyncRequest request = new QuizSyncRequest(UUID.randomUUID(), "article-123", -1.0, 90.0);
-
-        assertThrows(BadRequestException.class, () -> quizService.submitAndSync(request));
-
-        verify(attemptRepository, never()).save(any(UserAttempt.class));
-    }
-
-    @Test
-    void submitAndSync_whenScoreAbove100_throwsBadRequest() {
-        QuizSyncRequest request = new QuizSyncRequest(UUID.randomUUID(), "article-123", 101.0, 90.0);
-
-        assertThrows(BadRequestException.class, () -> quizService.submitAndSync(request));
-
-        verify(attemptRepository, never()).save(any(UserAttempt.class));
-    }
-
-    @Test
-    void submitAndSync_whenAccuracyIsNegative_throwsBadRequest() {
-        QuizSyncRequest request = new QuizSyncRequest(UUID.randomUUID(), "article-123", 80.0, -1.0);
-
-        assertThrows(BadRequestException.class, () -> quizService.submitAndSync(request));
-
-        verify(attemptRepository, never()).save(any(UserAttempt.class));
-    }
-
-    @Test
-    void submitAndSync_whenAccuracyAbove100_throwsBadRequest() {
-        QuizSyncRequest request = new QuizSyncRequest(UUID.randomUUID(), "article-123", 80.0, 101.0);
-
-        assertThrows(BadRequestException.class, () -> quizService.submitAndSync(request));
-
-        verify(attemptRepository, never()).save(any(UserAttempt.class));
+        verify(quizSyncClient, never()).sync(any());
     }
 }

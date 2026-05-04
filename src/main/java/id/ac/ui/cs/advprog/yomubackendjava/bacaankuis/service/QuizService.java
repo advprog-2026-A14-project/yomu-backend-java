@@ -1,42 +1,27 @@
 package id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service;
 
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.integration.QuizSyncClient;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.UserAttempt;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.UserAttemptRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
 @Service
 public class QuizService {
-    private final RestTemplate restTemplate = new RestTemplate();
     private final UserAttemptRepository attemptRepository;
+    private final QuizSyncClient quizSyncClient;
 
-    @Value("${internal.api.key:}")
-    private String apiKey;
-
-    public QuizService(UserAttemptRepository attemptRepository) {
+    public QuizService(UserAttemptRepository attemptRepository, QuizSyncClient quizSyncClient) {
         this.attemptRepository = attemptRepository;
+        this.quizSyncClient = quizSyncClient;
     }
 
-    public void syncToRust(QuizSyncRequest request) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("x-api-key", apiKey);
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<QuizSyncRequest> entity = new HttpEntity<>(request, headers);
-            restTemplate.postForEntity("http://rust-engine:8080/api/internal/quiz-history/sync", entity, String.class);
-        } catch (Exception e) {
-            System.err.println("Rust Sync Failed: " + e.getMessage());
-        }
-    }
-
+    @Transactional
     public void submitAndSync(QuizSyncRequest request) {
         validateRequest(request);
 
@@ -50,7 +35,7 @@ public class QuizService {
         attempt.setCompletedAt(LocalDateTime.now());
         attemptRepository.save(attempt);
 
-        syncToRust(request);
+        quizSyncClient.sync(request);
     }
 
     private void validateRequest(QuizSyncRequest request) {
