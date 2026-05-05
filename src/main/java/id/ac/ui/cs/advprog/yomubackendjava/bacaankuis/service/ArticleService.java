@@ -26,7 +26,9 @@ public class ArticleService {
     }
 
     public ArticleStatusResponse checkArticleExists(String id) {
-        boolean exists = articleRepository.existsById(id);
-        return new ArticleStatusResponse(exists, 1, "Edu");
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Artikel tidak ditemukan di Core DB"));
+
+        return new ArticleStatusResponse(true, 1, article.getCategory());
     }
 }

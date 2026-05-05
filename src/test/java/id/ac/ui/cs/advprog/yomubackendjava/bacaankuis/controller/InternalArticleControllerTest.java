@@ -64,7 +64,7 @@ class InternalArticleControllerTest {
         mockMvc.perform(get("/api/internal/articles/art-123/exists")
                         .header("x-api-key", "wrong-key")
                         .accept(APPLICATION_JSON))
-                .andExpect(status().isForbidden())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
     }
 }
