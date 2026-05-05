@@ -101,7 +101,7 @@ git checkout -b feature/<nama-modul-anda>
 ./gradlew test
 ./gradlew bootRun
 ```
-4. Kerjakan fitur secara modular di package sendiri (contoh: `bacaankuis`, `modul-x`) tanpa ubah kontrak global auth.
+4. Kerjakan fitur secara modular di package sendiri (contoh: `kuis`, `modul-x`) tanpa ubah kontrak global auth.
 5. Pastikan endpoint modul mengikuti kontrak response dan security (lihat bagian "Kontrak Integrasi Wajib").
 6. Sebelum push, jalankan test lagi:
 ```bash
@@ -110,7 +110,7 @@ git checkout -b feature/<nama-modul-anda>
 7. Push branch + buat PR ke `main`.
 
 ## 7) Kontrak Integrasi Wajib untuk Semua Modul
-Semua modul baru (termasuk `bacaankuis`) harus kompatibel dengan fondasi auth yang sudah ada.
+Semua modul baru (termasuk `kuis`) harus kompatibel dengan fondasi auth yang sudah ada.
 
 Aturan wajib:
 - Semua response API wajib wrapper: `{"success":..., "message":..., "data":...}`.
@@ -121,8 +121,8 @@ Aturan wajib:
 - Untuk akses user login, gunakan helper security/context yang sudah ada (bukan parsing token manual di controller).
 - Untuk kasus error, lempar custom exception agar ditangani global exception handler (jangan HTML error default).
 
-Contoh integrasi modul `bacaankuis` setelah pull:
-- Jika endpoint `bacaankuis` butuh user login, tempatkan di `/api/v1/...` dan biarkan security filter existing memverifikasi JWT.
+Contoh integrasi modul `kuis` setelah pull:
+- Jika endpoint `kuis` butuh user login, tempatkan di `/api/v1/...` dan biarkan security filter existing memverifikasi JWT.
 - Jika butuh `user_id` login, ambil dari `CurrentUser` di service layer.
 - Jika modul perlu sinkronisasi lintas service, gunakan pola outbox agar gagal integrasi tidak merusak transaksi utama.
 
@@ -137,6 +137,7 @@ Frontend / Client API:
 - Update akun: `PATCH /api/v1/users/me`, `PATCH /api/v1/users/me/password`, `PATCH /api/v1/users/me/login-identifiers`.
 - Delete akun: `DELETE /api/v1/users/me`.
 - Batch user lookup: `GET /api/v1/users/batch?ids=...`.
+- Forum: `GET /api/v1/forums/{article_id}/comments`, `POST /api/v1/forums/{article_id}/comments`, `POST /api/v1/forums/comments/{comment_id}/reactions`.
 
 Rust engine integration:
 - Endpoint internal Rust dipanggil dari Java: `POST {RUST_ENGINE_BASE_URL}/api/internal/users/sync`.
@@ -155,6 +156,7 @@ Folder penting di `src/main/java/id/ac/ui/cs/advprog/yomubackendjava`:
 - `security`: filter JWT, security config, handler 401/403, helper current user.
 - `user`: endpoint profile, update account, batch user lookup, mapper user DTO.
 - `bacaankuis`: domain fitur bacaan/kuis.
+- `forum`: domain fitur diskusi & komentar artikel.
 - `outbox`: pencatatan failed sync event, retry service, scheduler retry.
 - `integration`: adapter client ke service lain.
 - `admin`: endpoint operasional admin (monitor/retry outbox).
@@ -164,6 +166,7 @@ Folder penting di `src/main/java/id/ac/ui/cs/advprog/yomubackendjava`:
 Dokumentasi API:
 - `docs/api/auth.md`
 - `docs/api/admin-outbox.md`
+- `docs/api/forum.md`
 
 ## 10) Apakah Fondasi Ini Bisa Dipakai untuk Fitur Tambahan?
 Ya, fondasi ini memang dibuat reusable.
