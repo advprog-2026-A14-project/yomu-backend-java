@@ -1,5 +1,6 @@
 package id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.controller;
 
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizQuestionResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.Quiz;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.QuizRepository;
@@ -23,8 +24,13 @@ public class QuizController {
     }
 
     @GetMapping("/{article_id}")
-    public ResponseEntity<ApiResponse<List<Quiz>>> getQuizzes(@PathVariable("article_id") String articleId) {
-        List<Quiz> quizzes = quizRepository.findByArticleId(articleId);
+    public ResponseEntity<ApiResponse<List<QuizQuestionResponse>>> getQuizzes(
+            @PathVariable("article_id") String articleId) {
+        List<QuizQuestionResponse> quizzes = quizRepository.findByArticleId(articleId)
+                .stream()
+                .map(QuizQuestionResponse::new)
+                .toList();
+
         return ResponseEntity.ok(ApiResponse.success("Soal kuis ditemukan", quizzes));
     }
 
