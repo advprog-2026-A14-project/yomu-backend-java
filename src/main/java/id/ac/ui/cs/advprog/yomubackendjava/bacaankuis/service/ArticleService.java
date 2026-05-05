@@ -16,8 +16,11 @@ public class ArticleService {
         this.articleRepository = articleRepository;
     }
 
-    public List<Article> findAll() {
-        return articleRepository.findAll();
+    public List<Article> findAll(String category) {
+        if (category == null || category.isBlank()) {
+            return articleRepository.findAll();
+        }
+        return articleRepository.findByCategoryIgnoreCase(category);
     }
 
     public Article findById(String id) {
