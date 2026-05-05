@@ -16,8 +16,11 @@ public class ArticleService {
         this.articleRepository = articleRepository;
     }
 
-    public List<Article> findAll() {
-        return articleRepository.findAll();
+    public List<Article> findAll(String category) {
+        if (category == null || category.isBlank()) {
+            return articleRepository.findAll();
+        }
+        return articleRepository.findByCategoryIgnoreCase(category);
     }
 
     public Article findById(String id) {
@@ -26,7 +29,9 @@ public class ArticleService {
     }
 
     public ArticleStatusResponse checkArticleExists(String id) {
-        boolean exists = articleRepository.existsById(id);
-        return new ArticleStatusResponse(exists, 1, "Edu");
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Artikel tidak ditemukan di Core DB"));
+
+        return new ArticleStatusResponse(true, 1, article.getCategory());
     }
 }

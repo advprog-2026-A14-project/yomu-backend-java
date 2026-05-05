@@ -19,8 +19,9 @@ public class ArticleController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Article>>> list() {
-        List<Article> articles = articleService.findAll();
+    public ResponseEntity<ApiResponse<List<Article>>> list(
+            @RequestParam(value = "category", required = false) String category) {
+        List<Article> articles = articleService.findAll(category);
         return ResponseEntity.ok(ApiResponse.success("Daftar bacaan", articles));
     }
 
