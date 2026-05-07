@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CreateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.CommentNotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.UnauthorizedCommentAccessException;
+import id.ac.ui.cs.advprog.yomubackendjava.integration.rust.RustLeagueClient;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.Comment;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.repository.CommentRepository;
@@ -25,13 +26,16 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final ICommentReactionService reactionService;
+    private final RustLeagueClient rustLeagueClient;
 
     public CommentService(
             CommentRepository commentRepository,
-            @Lazy ICommentReactionService reactionService
+            @Lazy ICommentReactionService reactionService,
+            RustLeagueClient rustLeagueClient
     ) {
         this.commentRepository = commentRepository;
         this.reactionService = reactionService;
+        this.rustLeagueClient = rustLeagueClient;
     }
 
     public CommentResponse createComment(UUID articleId, CreateCommentRequest request) {
@@ -103,6 +107,19 @@ public class CommentService {
 
         int reactionCount = reactionService.getReactionCount(comment.getId(), ReactionType.UPVOTE);
 
+        String clanName = null;
+        String tier = null;
+        try {
+            RustLeagueClient.UserTierResponse tierResponse =
+                    rustLeagueClient.getUserTier(comment.getUserId());
+            if (tierResponse != null) {
+                clanName = tierResponse.clanName();
+                tier = tierResponse.tier();
+            }
+        } catch (Exception e) {
+            // Fault tolerance: Rust down, comment tetap tampil tanpa tier
+        }
+
         return CommentResponse.builder()
                 .id(comment.getId())
                 .articleId(comment.getArticleId())
@@ -111,6 +128,8 @@ public class CommentService {
                 .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
                 .reactionCount(reactionCount)
+                .clanName(clanName)
+                .tier(tier)
                 .build();
     }
 
@@ -125,6 +144,19 @@ public class CommentService {
 
         int reactionCount = reactionService.getReactionCount(comment.getId(), ReactionType.UPVOTE);
 
+        String clanName = null;
+        String tier = null;
+        try {
+            RustLeagueClient.UserTierResponse tierResponse =
+                    rustLeagueClient.getUserTier(comment.getUserId());
+            if (tierResponse != null) {
+                clanName = tierResponse.clanName();
+                tier = tierResponse.tier();
+            }
+        } catch (Exception e) {
+            // Fault tolerance: Rust down, comment tetap tampil tanpa tier
+        }
+
         return CommentResponse.builder()
                 .id(comment.getId())
                 .articleId(comment.getArticleId())
@@ -134,6 +166,8 @@ public class CommentService {
                 .createdAt(comment.getCreatedAt())
                 .reactionCount(reactionCount)
                 .replies(replyResponses)
+                .clanName(clanName)
+                .tier(tier)
                 .build();
     }
 }
