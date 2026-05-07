@@ -45,7 +45,7 @@ public class CommentReactionService implements ICommentReactionService {
 
         ReactionStrategy strategy = strategyFactory.resolve(reactionType);
         Optional<CommentReaction> existing = reactionRepository
-                .findByCommentIdAndUserIdAndReactionType(commentId, userId, reactionType);
+                .findByCommentIdAndUserIdAndReactionTypeForUpdate(commentId, userId, reactionType);
 
         boolean reacted;
         if (existing.isPresent()) {
