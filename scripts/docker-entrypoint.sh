@@ -4,9 +4,19 @@
 
 set -e
 
-DB_HOST=$(echo "$SPRING_DATASOURCE_URL" | sed -n 's/.*@\([^:]*\):.*/\1/p')
-DB_PORT=$(echo "$SPRING_DATASOURCE_URL" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
-DB_NAME=$(echo "$SPRING_DATASOURCE_URL" | sed -n 's/.*\/\([^?]*\).*/\1/p')
+# Parse JDBC URL robustly. Handles both:
+#   jdbc:postgresql://localhost:5432/yomu_db
+#   postgresql://user:password@host:5432/yomu_db
+URL_NO_PROTO="${SPRING_DATASOURCE_URL#*://}"
+AUTH_HOST="${URL_NO_PROTO#*@}"
+HOST_PORT_DB="${AUTH_HOST}"
+[ -z "$AUTH_HOST" ] && HOST_PORT_DB="${URL_NO_PROTO}"
+
+DB_HOST="${HOST_PORT_DB%%:*}"
+DB_PORT="${HOST_PORT_DB#*:}"
+DB_PORT="${DB_PORT%%/*}"
+DB_NAME="${HOST_PORT_DB#*/}"
+DB_NAME="${DB_NAME%%\?*}"
 
 # Default fallback
 DB_HOST="${DB_HOST:-postgres}"
