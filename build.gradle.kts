@@ -90,7 +90,7 @@ sourceSets {
             srcDirs("src/main/java", "${protobuf.generatedFilesBaseDir}/main/java", "${protobuf.generatedFilesBaseDir}/main/grpc")
         }
         proto {
-            srcDir("${projectDir}/../proto/yomu")
+            srcDir("${projectDir}/src/main/proto/yomu")
         }
     }
 }
