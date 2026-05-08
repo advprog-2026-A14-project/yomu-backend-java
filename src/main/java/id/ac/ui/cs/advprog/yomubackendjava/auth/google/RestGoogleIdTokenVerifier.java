@@ -1,19 +1,18 @@
 package id.ac.ui.cs.advprog.yomubackendjava.auth.google;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StreamUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
-import java.io.IOException;
 import java.net.http.HttpClient;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Component
 public class RestGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
@@ -22,9 +21,6 @@ public class RestGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
             "accounts.google.com"
     );
     private static final String INVALID_GOOGLE_RESPONSE_MESSAGE = "response verifikasi Google tidak valid";
-    private static final Pattern STRING_FIELD_PATTERN_TEMPLATE = Pattern.compile("\"%s\"\\s*:\\s*\"([^\"]*)\"");
-    private static final Pattern NUMBER_FIELD_PATTERN_TEMPLATE = Pattern.compile("\"%s\"\\s*:\\s*\"?(\\d+)\"?");
-    private static final Pattern BOOLEAN_FIELD_PATTERN_TEMPLATE = Pattern.compile("\"%s\"\\s*:\\s*\"?(true|false)\"?");
 
     private final RestClient restClient;
     private final String expectedAudience;
@@ -57,26 +53,35 @@ public class RestGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
             throw new IllegalArgumentException("id_token kosong");
         }
 
-        String body = restClient.get()
+        GoogleTokenInfo tokenInfo = fetchTokenInfo(normalizedToken);
+        String subject = validateTokenInfo(tokenInfo);
+
+        String email = normalize(tokenInfo.email());
+        String name = normalize(tokenInfo.name());
+        return new GoogleProfile(subject, email, name);
+    }
+
+    private GoogleTokenInfo fetchTokenInfo(String normalizedToken) {
+        try {
+            GoogleTokenInfo tokenInfo = restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/tokeninfo")
                         .queryParam("id_token", normalizedToken)
                         .build())
-                .exchange((request, response) -> {
-                    if (!response.getStatusCode().is2xxSuccessful()) {
-                        throw new IllegalArgumentException("id_token tidak valid");
-                    }
-                    if (response.getBody() == null) {
-                        return "";
-                    }
-                    try {
-                        return StreamUtils.copyToString(response.getBody(), StandardCharsets.UTF_8);
-                    } catch (IOException ex) {
-                        throw new IllegalArgumentException(INVALID_GOOGLE_RESPONSE_MESSAGE, ex);
-                    }
-                });
+                .retrieve()
+                .body(GoogleTokenInfo.class);
+            if (tokenInfo == null) {
+                throw new IllegalArgumentException(INVALID_GOOGLE_RESPONSE_MESSAGE);
+            }
+            return tokenInfo;
+        } catch (RestClientResponseException ex) {
+            throw new IllegalArgumentException("id_token tidak valid");
+        } catch (RestClientException ex) {
+            throw new IllegalArgumentException(INVALID_GOOGLE_RESPONSE_MESSAGE, ex);
+        }
+    }
 
-        GoogleTokenInfo tokenInfo = parseTokenInfo(body);
+    private String validateTokenInfo(GoogleTokenInfo tokenInfo) {
         String subject = requiredStringField(tokenInfo.sub(), "sub");
         String issuer = requiredStringField(tokenInfo.issuer(), "iss");
         if (!ALLOWED_ISSUERS.contains(issuer)) {
@@ -98,22 +103,7 @@ public class RestGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
         if (Boolean.FALSE.equals(tokenInfo.emailVerified())) {
             throw new IllegalArgumentException("email id_token belum terverifikasi");
         }
-
-        String email = normalize(tokenInfo.email());
-        String name = normalize(tokenInfo.name());
-        return new GoogleProfile(subject, email, name);
-    }
-
-    private GoogleTokenInfo parseTokenInfo(String body) {
-        return new GoogleTokenInfo(
-                optionalStringField(body, "sub"),
-                optionalStringField(body, "iss"),
-                optionalStringField(body, "aud"),
-                optionalNumberField(body, "exp"),
-                optionalStringField(body, "email"),
-                optionalBooleanField(body, "email_verified"),
-                optionalStringField(body, "name")
-        );
+        return subject;
     }
 
     private String requiredStringField(String rawValue, String fieldName) {
@@ -122,37 +112,6 @@ public class RestGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
             throw new IllegalArgumentException(fieldName + " tidak ditemukan");
         }
         return value;
-    }
-
-    private String optionalStringField(String body, String fieldName) {
-        Pattern pattern = Pattern.compile(String.format(STRING_FIELD_PATTERN_TEMPLATE.pattern(), fieldName));
-        Matcher matcher = pattern.matcher(body == null ? "" : body);
-        if (!matcher.find()) {
-            return null;
-        }
-        return normalize(matcher.group(1));
-    }
-
-    private Long optionalNumberField(String body, String fieldName) {
-        Pattern pattern = Pattern.compile(String.format(NUMBER_FIELD_PATTERN_TEMPLATE.pattern(), fieldName));
-        Matcher matcher = pattern.matcher(body == null ? "" : body);
-        if (!matcher.find()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(matcher.group(1));
-        } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException(fieldName + " tidak valid");
-        }
-    }
-
-    private Boolean optionalBooleanField(String body, String fieldName) {
-        Pattern pattern = Pattern.compile(String.format(BOOLEAN_FIELD_PATTERN_TEMPLATE.pattern(), fieldName));
-        Matcher matcher = pattern.matcher(body == null ? "" : body);
-        if (!matcher.find()) {
-            return null;
-        }
-        return Boolean.valueOf(matcher.group(1));
     }
 
     private String normalize(String value) {
@@ -165,11 +124,11 @@ public class RestGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
 
     private record GoogleTokenInfo(
             String sub,
-            String issuer,
-            String audience,
-            Long expiresAt,
+            @JsonProperty("iss") String issuer,
+            @JsonProperty("aud") String audience,
+            @JsonProperty("exp") Long expiresAt,
             String email,
-            Boolean emailVerified,
+            @JsonProperty("email_verified") Boolean emailVerified,
             String name
     ) {
     }

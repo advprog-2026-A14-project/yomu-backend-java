@@ -6,12 +6,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AuthResponseData {
     @JsonProperty("access_token")
-    private String accessToken;
+    private final String accessToken;
     @JsonProperty("is_new_user")
-    private Boolean isNewUser;
-    private UserDto user;
+    private final Boolean isNewUser;
+    private final UserDto user;
 
     public AuthResponseData(String accessToken, UserDto user) {
+        this.isNewUser = null;
         this.accessToken = accessToken;
         this.user = user;
     }
