@@ -93,6 +93,11 @@ public class RestGoogleIdTokenVerifier implements GoogleIdTokenVerifier {
             }
         }
 
+        String emailVerified = optionalStringField(body, "email_verified");
+        if ("false".equalsIgnoreCase(emailVerified)) {
+            throw new IllegalArgumentException("email id_token belum terverifikasi");
+        }
+
         String email = optionalStringField(body, "email");
         String name = optionalStringField(body, "name");
         return new GoogleProfile(subject, email, name);
