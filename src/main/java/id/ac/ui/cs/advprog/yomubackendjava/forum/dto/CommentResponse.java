@@ -38,4 +38,9 @@ public class CommentResponse {
     private int reactionCount;
 
     private List<CommentResponse> replies;
+
+    @JsonProperty("clan_name")
+    private String clanName;
+
+    private String tier;
 }

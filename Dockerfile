@@ -1,42 +1,67 @@
-# Multi-stage build for Yomu Backend Java
-# Build stage
+# Multi-stage build for yomu-backend-java
+# Uses BuildKit cache mounts for faster incremental rebuilds.
+# DOCKER_BUILDKIT=1 is required (default in Docker 23+).
+
+# ============================================
+# Stage 1: Build
+# ============================================
 FROM gradle:8.14-jdk21 AS builder
 
 WORKDIR /app
 
-# Copy build configuration
-COPY build.gradle.kts settings.gradle.kts ./
+# Copy build configuration first (layer caching)
+COPY build.gradle.kts settings.gradle.kts gradlew ./
+COPY gradle/ gradle/
 
-# Copy source code
-COPY src ./src
+# Pre-warm Gradle dependencies (cached independently from src)
+RUN --mount=type=cache,target=/root/.gradle \
+  gradle dependencies --no-daemon || true
 
-# Build the application (skip tests for faster builds)
-RUN gradle bootJar --no-daemon
+# Copy source and build
+COPY src/ src/
 
-# Runtime stage
-FROM eclipse-temurin:21-jre-alpine
+RUN --mount=type=cache,target=/root/.gradle \
+  gradle bootJar --no-daemon --parallel \
+  -x test -x pmdMain -x pmdTest -x jacocoTestReport -x jacocoTestCoverageVerification
+
+# ============================================
+# Stage 2: Runtime
+# ============================================
+FROM eclipse-temurin:21-jre-alpine AS runtime
 
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup -g 1000 appgroup && \
-    adduser -u 1000 -G appgroup -s /bin/sh -D appuser
+# Install health-check tool and netcat (for entrypoint connectivity check)
+RUN apk add --no-cache wget netcat-openbsd curl
 
-# Copy the built JAR from builder stage
+# Create non-root user
+RUN addgroup -g 1000 appgroup && \
+  adduser -u 1000 -G appgroup -s /bin/sh -D appuser
+
+# Copy the built fat JAR
 COPY --from=builder /app/build/libs/*.jar app.jar
 
-# Change ownership to non-root user
+# Set ownership
 RUN chown -R appuser:appgroup /app
 
-# Switch to non-root user
+# Copy entrypoint script
+COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# OCI Labels
+ARG IMAGE_SOURCE="https://github.com/advprog-2026-A14-project/yomu-backend-java"
+ARG IMAGE_DESCRIPTION="Yomu Backend Java - Auth, User, Bacaankuis (articles/quiz), Forum"
+ARG IMAGE_LICENSES="MIT"
+
+LABEL org.opencontainers.image.source="${IMAGE_SOURCE}"
+LABEL org.opencontainers.image.description="${IMAGE_DESCRIPTION}"
+LABEL org.opencontainers.image.licenses="${IMAGE_LICENSES}"
+
 USER appuser
 
-# Expose application port
 EXPOSE 8080
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/v1/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
 
-# Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

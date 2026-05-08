@@ -91,7 +91,7 @@ class CommentReactionServiceTest {
 
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
         when(strategyFactory.resolve(ReactionType.UPVOTE)).thenReturn(reactionStrategy);
-        when(reactionRepository.findByCommentIdAndUserIdAndReactionType(commentId, userId, ReactionType.UPVOTE))
+        when(reactionRepository.findByCommentIdAndUserIdAndReactionTypeForUpdate(commentId, userId, ReactionType.UPVOTE))
                 .thenReturn(Optional.empty());
         when(reactionRepository.countByCommentIdAndReactionType(commentId, ReactionType.UPVOTE))
                 .thenReturn(1);
@@ -113,7 +113,7 @@ class CommentReactionServiceTest {
 
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
         when(strategyFactory.resolve(ReactionType.UPVOTE)).thenReturn(reactionStrategy);
-        when(reactionRepository.findByCommentIdAndUserIdAndReactionType(commentId, userId, ReactionType.UPVOTE))
+        when(reactionRepository.findByCommentIdAndUserIdAndReactionTypeForUpdate(commentId, userId, ReactionType.UPVOTE))
                 .thenReturn(Optional.of(existing));
         when(reactionRepository.countByCommentIdAndReactionType(commentId, ReactionType.UPVOTE))
                 .thenReturn(0);
@@ -172,5 +172,43 @@ class CommentReactionServiceTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> reactionService.toggleReaction(commentId, ReactionType.UPVOTE));
+    }
+
+    @Test
+    void toggleReaction_concurrentToggle_shouldNotResultInDoubleReaction() throws InterruptedException {
+        authenticateAs(userId, Role.PELAJAR);
+
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
+        when(strategyFactory.resolve(ReactionType.UPVOTE)).thenReturn(reactionStrategy);
+        when(reactionRepository.findByCommentIdAndUserIdAndReactionTypeForUpdate(commentId, userId, ReactionType.UPVOTE))
+                .thenReturn(Optional.empty());
+        when(reactionRepository.countByCommentIdAndReactionType(commentId, ReactionType.UPVOTE))
+                .thenReturn(1);
+
+        ReactionResponse response = reactionService.toggleReaction(commentId, ReactionType.UPVOTE);
+
+        assertTrue(response.isReacted());
+        assertEquals(1, response.getReactionCount());
+        verify(reactionRepository, times(1))
+                .save(any(CommentReaction.class));
+    }
+
+    @Test
+    void toggleReaction_usesForUpdateMethod_notRegularFind() {
+        authenticateAs(userId, Role.PELAJAR);
+
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
+        when(strategyFactory.resolve(ReactionType.UPVOTE)).thenReturn(reactionStrategy);
+        when(reactionRepository.findByCommentIdAndUserIdAndReactionTypeForUpdate(commentId, userId, ReactionType.UPVOTE))
+                .thenReturn(Optional.empty());
+        when(reactionRepository.countByCommentIdAndReactionType(commentId, ReactionType.UPVOTE))
+                .thenReturn(1);
+
+        reactionService.toggleReaction(commentId, ReactionType.UPVOTE);
+
+        verify(reactionRepository, times(1))
+                .findByCommentIdAndUserIdAndReactionTypeForUpdate(commentId, userId, ReactionType.UPVOTE);
+        verify(reactionRepository, never())
+                .findByCommentIdAndUserIdAndReactionType(commentId, userId, ReactionType.UPVOTE);
     }
 }

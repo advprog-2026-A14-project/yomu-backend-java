@@ -42,6 +42,16 @@ jobs:
       - name: Run unit tests
         run: ./gradlew test
 
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results-${{ github.run_id }}
+          path: |
+            build/test-results/test/
+            build/reports/tests/test/
+          retention-days: 7
+
   quality_checks:
     name: Quality checks (PMD + JaCoCo)
     uses: ./.github/workflows/pmd.yml
