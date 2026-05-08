@@ -87,6 +87,8 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final UserAttemptRepository userAttemptRepository;
     private final CommentReactionRepository commentReactionRepository;
 
+    private static final String CATEGORY_LANGUAGE = "language";
+
     public DatabaseSeeder(
             UserRepository userRepository,
             ArticleRepository articleRepository,
@@ -193,7 +195,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "anak-anak = children). The word order is typically Subject-Verb-Object. "
                         + "Bahasa Indonesia uses the Latin alphabet and has a phonetic spelling system, "
                         + "meaning words are pronounced as they are written.",
-                "language"));
+                CATEGORY_LANGUAGE));
 
         articleRepository.save(buildArticle("art-002", "English Grammar Fundamentals",
                 "English grammar is the set of structural rules that govern the composition of clauses, phrases, "
@@ -202,7 +204,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "(present, past, future with simple, continuous, perfect, and perfect continuous aspects), "
                         + "articles (a, an, the), and sentence structure. English has a Subject-Verb-Object word order "
                         + "and uses auxiliary verbs extensively for questions and negation.",
-                "language"));
+                CATEGORY_LANGUAGE));
 
         articleRepository.save(buildArticle("art-003", "Japanese Hiragana Guide",
                 "Hiragana is one of the three writing systems used in Japanese, alongside Katakana and Kanji. "
@@ -211,7 +213,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "The characters are organized in a gojuon table (五十音, 'fifty sounds'). "
                         + "Hiragana is used for native Japanese words, grammatical particles, and verb/ adjective endings. "
                         + "Learning hiragana is the essential first step for any Japanese language learner.",
-                "language"));
+                CATEGORY_LANGUAGE));
 
         articleRepository.save(buildArticle("art-004", "French Pronunciation Tips",
                 "French pronunciation can be challenging for English speakers. Key features include nasal vowels "
@@ -220,7 +222,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "in speech. The language uses diacritical marks including the acute accent (é), grave accent (è), "
                         + "circumflex (ê), cedilla (ç), and diaeresis (ë). Mastering French pronunciation requires "
                         + "consistent practice with native audio materials.",
-                "language"));
+                CATEGORY_LANGUAGE));
 
         articleRepository.save(buildArticle("art-005", "German Articles Explained",
                 "German has three grammatical genders: masculine, feminine, and neuter. Each noun belongs to one "
@@ -229,7 +231,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "'das Kind' (the child). All plural nouns use 'die' regardless of gender. "
                         + "Articles also change based on the case system: nominative, accusative, dative, and genitive. "
                         + "Memorizing the article together with each noun is essential for German learners.",
-                "language"));
+                CATEGORY_LANGUAGE));
 
         articleRepository.save(buildArticle("art-006", "Spanish Verb Conjugation",
                 "Spanish verbs are conjugated to reflect person, number, tense, mood, and aspect. "
@@ -238,7 +240,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "hablo, hablas, habla, hablamos, habláis, hablan. Spanish has a rich system of tenses "
                         + "including present, preterite, imperfect, future, conditional, and various compound tenses "
                         + "using the auxiliary verb 'haber'. Mastering conjugation patterns is the key to Spanish fluency.",
-                "language"));
+                CATEGORY_LANGUAGE));
 
         log.info("    ✅ 6 articles seeded");
     }
