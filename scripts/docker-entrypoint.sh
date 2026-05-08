@@ -55,5 +55,5 @@ echo "Starting Spring Boot application..."
 echo "Schema will be auto-managed by Hibernate (ddl-auto=update)"
 echo ""
 
-exec java -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 \
+exec java -Djava.security.egd=file:/dev/./urandom -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 \
   -XX:+ExitOnOutOfMemoryError -jar app.jar
