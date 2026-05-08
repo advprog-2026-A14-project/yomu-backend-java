@@ -11,8 +11,6 @@ import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
-import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
-import id.ac.ui.cs.advprog.yomubackendjava.user.UserMapper;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
 import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
@@ -40,8 +38,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
-    private final UserMapper userMapper;
+    private final AuthResponseFactory authResponseFactory;
     private final IdentifierResolver identifierResolver;
     private final UsernameGenerator usernameGenerator;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
@@ -50,8 +47,7 @@ public class AuthService {
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService,
-            UserMapper userMapper,
+            AuthResponseFactory authResponseFactory,
             IdentifierResolver identifierResolver,
             UsernameGenerator usernameGenerator,
             GoogleIdTokenVerifier googleIdTokenVerifier,
@@ -59,8 +55,7 @@ public class AuthService {
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
-        this.userMapper = userMapper;
+        this.authResponseFactory = authResponseFactory;
         this.identifierResolver = identifierResolver;
         this.usernameGenerator = usernameGenerator;
         this.googleIdTokenVerifier = googleIdTokenVerifier;
@@ -93,8 +88,7 @@ public class AuthService {
 
         authUserSyncService.syncNewUser(savedUser.getUserId());
 
-        String accessToken = jwtService.generateToken(savedUser.getUserId(), savedUser.getRole());
-        AuthResponseData responseData = new AuthResponseData(accessToken, userMapper.toUserDto(savedUser));
+        AuthResponseData responseData = authResponseFactory.createLocalAuthResponse(savedUser);
         return ApiResponse.success(REGISTER_SUCCESS_MESSAGE, responseData);
     }
 
@@ -113,8 +107,7 @@ public class AuthService {
             throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
         }
 
-        String accessToken = jwtService.generateToken(user.getUserId(), user.getRole());
-        AuthResponseData responseData = new AuthResponseData(accessToken, userMapper.toUserDto(user));
+        AuthResponseData responseData = authResponseFactory.createLocalAuthResponse(user);
         return ApiResponse.success(LOGIN_SUCCESS_MESSAGE, responseData);
     }
 
@@ -210,8 +203,7 @@ public class AuthService {
     }
 
     private ApiResponse<AuthResponseData> buildGoogleLoginResponse(UserEntity user, boolean isNewUser) {
-        String accessToken = jwtService.generateToken(user.getUserId(), user.getRole());
-        AuthResponseData responseData = new AuthResponseData(isNewUser, accessToken, userMapper.toUserDto(user));
+        AuthResponseData responseData = authResponseFactory.createGoogleAuthResponse(user, isNewUser);
         return ApiResponse.success(GOOGLE_LOGIN_SUCCESS_MESSAGE, responseData);
     }
 
