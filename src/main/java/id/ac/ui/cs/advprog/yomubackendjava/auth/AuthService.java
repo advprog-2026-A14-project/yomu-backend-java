@@ -1,9 +1,9 @@
 package id.ac.ui.cs.advprog.yomubackendjava.auth;
 
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.AuthResponseData;
-import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.GoogleLoginRequest;
-import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.LoginRequest;
-import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.RegisterRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.command.GoogleLoginCommand;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.command.LoginCommand;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.command.RegisterCommand;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.google.GoogleIdTokenVerifier;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.google.GoogleProfile;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
@@ -11,8 +11,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
-import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
-import id.ac.ui.cs.advprog.yomubackendjava.user.UserMapper;
+import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
 import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
@@ -36,42 +35,38 @@ public class AuthService {
     private static final String LOGIN_SSO_ONLY_MESSAGE = "akun menggunakan metode login lain";
     private static final String GOOGLE_LOGIN_SUCCESS_MESSAGE = "Login Google berhasil";
     private static final String GOOGLE_TOKEN_INVALID_MESSAGE = "id_token tidak valid";
-    private static final String GOOGLE_SUB_INVALID_MESSAGE = "google_sub tidak valid";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
-    private final UserMapper userMapper;
+    private final AuthResponseFactory authResponseFactory;
     private final IdentifierResolver identifierResolver;
-    private final UsernameGenerator usernameGenerator;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
     private final AuthUserSyncService authUserSyncService;
+    private final GoogleUserProvisioningService googleUserProvisioningService;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService,
-            UserMapper userMapper,
+            AuthResponseFactory authResponseFactory,
             IdentifierResolver identifierResolver,
-            UsernameGenerator usernameGenerator,
             GoogleIdTokenVerifier googleIdTokenVerifier,
-            AuthUserSyncService authUserSyncService
+            AuthUserSyncService authUserSyncService,
+            GoogleUserProvisioningService googleUserProvisioningService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
-        this.userMapper = userMapper;
+        this.authResponseFactory = authResponseFactory;
         this.identifierResolver = identifierResolver;
-        this.usernameGenerator = usernameGenerator;
         this.googleIdTokenVerifier = googleIdTokenVerifier;
         this.authUserSyncService = authUserSyncService;
+        this.googleUserProvisioningService = googleUserProvisioningService;
     }
 
-    public ApiResponse<AuthResponseData> registerLocal(RegisterRequest request) {
-        String username = normalize(request.getUsername());
-        String displayName = normalize(request.getDisplayName());
-        String email = normalize(request.getEmail());
-        String phoneNumber = normalize(request.getPhoneNumber());
+    public ApiResponse<AuthResponseData> registerLocal(RegisterCommand command) {
+        String username = normalize(command.username());
+        String displayName = SecuritySanitizer.html(command.displayName());
+        String email = normalize(command.email());
+        String phoneNumber = normalize(command.phoneNumber());
 
         validateRegisterIdentifiers(email, phoneNumber);
         validateUniqueness(username, email, phoneNumber);
@@ -81,7 +76,7 @@ public class AuthService {
         user.setDisplayName(displayName);
         user.setEmail(email);
         user.setPhoneNumber(phoneNumber);
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setPasswordHash(passwordEncoder.encode(command.password()));
         user.setRole(Role.PELAJAR);
 
         UserEntity savedUser;
@@ -93,13 +88,12 @@ public class AuthService {
 
         authUserSyncService.syncNewUser(savedUser.getUserId());
 
-        String accessToken = jwtService.generateToken(savedUser.getUserId(), savedUser.getRole());
-        AuthResponseData responseData = new AuthResponseData(accessToken, userMapper.toUserDto(savedUser));
+        AuthResponseData responseData = authResponseFactory.createLocalAuthResponse(savedUser);
         return ApiResponse.success(REGISTER_SUCCESS_MESSAGE, responseData);
     }
 
-    public ApiResponse<AuthResponseData> loginLocal(LoginRequest request) {
-        String identifier = normalize(request.getIdentifier());
+    public ApiResponse<AuthResponseData> loginLocal(LoginCommand command) {
+        String identifier = normalize(command.identifier());
         if (identifier == null) {
             throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
         }
@@ -109,41 +103,19 @@ public class AuthService {
         if (user.getPasswordHash() == null) {
             throw new UnauthorizedException(LOGIN_SSO_ONLY_MESSAGE);
         }
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        if (!passwordEncoder.matches(command.password(), user.getPasswordHash())) {
             throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
         }
 
-        String accessToken = jwtService.generateToken(user.getUserId(), user.getRole());
-        AuthResponseData responseData = new AuthResponseData(accessToken, userMapper.toUserDto(user));
+        AuthResponseData responseData = authResponseFactory.createLocalAuthResponse(user);
         return ApiResponse.success(LOGIN_SUCCESS_MESSAGE, responseData);
     }
 
-    public ApiResponse<AuthResponseData> googleLogin(GoogleLoginRequest request) {
-        GoogleProfile profile = verifyGoogleToken(request.getIdToken());
-        String googleSub = normalize(profile.googleSub());
-        if (googleSub == null) {
-            throw new BadRequestException(GOOGLE_SUB_INVALID_MESSAGE);
-        }
-
-        Optional<UserEntity> existingUserOpt = userRepository.findByGoogleSub(googleSub);
-        if (existingUserOpt.isPresent()) {
-            UserEntity existingUser = existingUserOpt.get();
-            if (existingUser.getDeletedAt() != null) {
-                throw new ForbiddenException(LOGIN_DELETED_MESSAGE);
-            }
-            return buildGoogleLoginResponse(existingUser, false);
-        }
-
-        UserEntity newUser = buildNewGoogleUser(request, profile, googleSub);
-        UserEntity savedUser;
-        try {
-            savedUser = userRepository.saveAndFlush(newUser);
-        } catch (DataIntegrityViolationException ex) {
-            throw new ConflictException(GENERIC_CONFLICT_MESSAGE);
-        }
-
-        authUserSyncService.syncNewUser(savedUser.getUserId());
-        return buildGoogleLoginResponse(savedUser, true);
+    public ApiResponse<AuthResponseData> googleLogin(GoogleLoginCommand command) {
+        GoogleProfile profile = verifyGoogleToken(command.idToken());
+        GoogleUserProvisioningService.ProvisionedGoogleUser provisionedUser =
+                googleUserProvisioningService.findOrProvisionUser(command, profile);
+        return buildGoogleLoginResponse(provisionedUser.user(), provisionedUser.isNewUser());
     }
 
     private void validateRegisterIdentifiers(String email, String phoneNumber) {
@@ -172,46 +144,8 @@ public class AuthService {
         }
     }
 
-    private UserEntity buildNewGoogleUser(GoogleLoginRequest request, GoogleProfile profile, String googleSub) {
-        String requestUsername = normalize(request.getUsername());
-        String emailFromGoogle = normalize(profile.email());
-        if (requestUsername != null && userRepository.findByUsernameAndDeletedAtIsNull(requestUsername).isPresent()) {
-            throw new ConflictException(USERNAME_USED_MESSAGE);
-        }
-        if (emailFromGoogle != null && userRepository.findByEmailAndDeletedAtIsNull(emailFromGoogle).isPresent()) {
-            throw new ConflictException(EMAIL_USED_MESSAGE);
-        }
-
-        String username = requestUsername != null
-                ? requestUsername
-                : usernameGenerator.generateFromEmail(emailFromGoogle);
-        String displayName = resolveGoogleDisplayName(request, profile, username);
-
-        UserEntity user = new UserEntity();
-        user.setUsername(username);
-        user.setDisplayName(displayName);
-        user.setEmail(emailFromGoogle);
-        user.setRole(Role.PELAJAR);
-        user.setPasswordHash(null);
-        user.setGoogleSub(googleSub);
-        return user;
-    }
-
-    private String resolveGoogleDisplayName(GoogleLoginRequest request, GoogleProfile profile, String username) {
-        String requestDisplayName = normalize(request.getDisplayName());
-        if (requestDisplayName != null) {
-            return requestDisplayName;
-        }
-        String googleName = normalize(profile.name());
-        if (googleName != null) {
-            return googleName;
-        }
-        return username;
-    }
-
     private ApiResponse<AuthResponseData> buildGoogleLoginResponse(UserEntity user, boolean isNewUser) {
-        String accessToken = jwtService.generateToken(user.getUserId(), user.getRole());
-        AuthResponseData responseData = new AuthResponseData(isNewUser, accessToken, userMapper.toUserDto(user));
+        AuthResponseData responseData = authResponseFactory.createGoogleAuthResponse(user, isNewUser);
         return ApiResponse.success(GOOGLE_LOGIN_SUCCESS_MESSAGE, responseData);
     }
 
@@ -245,10 +179,6 @@ public class AuthService {
     }
 
     private String normalize(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return SecuritySanitizer.normalize(value);
     }
 }

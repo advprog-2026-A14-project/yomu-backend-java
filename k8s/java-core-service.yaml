@@ -1,0 +1,183 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yomu-java-config
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8080"
+  RUST_ENGINE_BASE_URL: "http://rust-engine-service:8080"
+  DB_POOL_MAX_SIZE: "8"
+  DB_POOL_MIN_IDLE: "2"
+  DB_POOL_CONN_TIMEOUT: "30000"
+  DB_POOL_IDLE_TIMEOUT: "600000"
+  DB_POOL_MAX_LIFETIME: "1800000"
+  DB_POOL_KEEPALIVE: "300000"
+  DB_POOL_LEAK_DETECTION: "30000"
+  CORS_ALLOWED_ORIGINS: "https://frontend.example.com"
+  CORS_ALLOW_CREDENTIALS: "false"
+  JWT_ISSUER: "yomu-backend-java"
+  JWT_AUDIENCE: "yomu-clients"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: yomu-java-secret
+type: Opaque
+stringData:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres-service:5432/yomu_db"
+  SPRING_DATASOURCE_USERNAME: "postgres"
+  SPRING_DATASOURCE_PASSWORD: "change-me"
+  JWT_SECRET: "change-me-minimum-32-characters"
+  INTERNAL_API_KEY: "change-me"
+  GOOGLE_OAUTH_CLIENT_ID: "change-me.apps.googleusercontent.com"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yomu-java-core
+  labels:
+    app: yomu-java-core
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: yomu-java-core
+      role: web
+  template:
+    metadata:
+      labels:
+        app: yomu-java-core
+        role: web
+    spec:
+      terminationGracePeriodSeconds: 35
+      containers:
+        - name: yomu-java-core
+          image: ghcr.io/advprog-2026-a14-project/yomu-backend-java:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: yomu-java-config
+            - secretRef:
+                name: yomu-java-secret
+          env:
+            - name: OUTBOX_SCHEDULER_ENABLED
+              value: "false"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yomu-java-outbox-scheduler
+  labels:
+    app: yomu-java-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yomu-java-core
+      role: scheduler
+  template:
+    metadata:
+      labels:
+        app: yomu-java-core
+        role: scheduler
+    spec:
+      terminationGracePeriodSeconds: 35
+      containers:
+        - name: yomu-java-outbox-scheduler
+          image: ghcr.io/advprog-2026-a14-project/yomu-backend-java:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: yomu-java-config
+            - secretRef:
+                name: yomu-java-secret
+          env:
+            - name: OUTBOX_SCHEDULER_ENABLED
+              value: "true"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "384Mi"
+            limits:
+              cpu: "750m"
+              memory: "768Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yomu-java-core-service
+spec:
+  type: ClusterIP
+  selector:
+    app: yomu-java-core
+    role: web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yomu-java-core-ingress
+spec:
+  rules:
+    - host: api.yomu.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: yomu-java-core-service
+                port:
+                  name: http

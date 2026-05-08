@@ -8,6 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+
 @RestController
 @RequestMapping("/api/internal/articles")
 public class InternalArticleController {
@@ -34,7 +37,10 @@ public class InternalArticleController {
     }
 
     private void validateApiKey(String apiKey) {
-        if (apiKey == null || apiKey.isBlank() || !internalApiKey.equals(apiKey)) {
+        if (apiKey == null || apiKey.isBlank() || internalApiKey == null || internalApiKey.isBlank()
+                || !MessageDigest.isEqual(
+                        internalApiKey.getBytes(StandardCharsets.UTF_8),
+                        apiKey.getBytes(StandardCharsets.UTF_8))) {
             throw new UnauthorizedException("Invalid internal API key");
         }
     }
