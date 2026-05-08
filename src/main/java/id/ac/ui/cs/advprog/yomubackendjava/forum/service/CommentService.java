@@ -14,6 +14,8 @@ import id.ac.ui.cs.advprog.yomubackendjava.security.CurrentUser;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +23,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class CommentService {
+
+    private static final Logger log = LoggerFactory.getLogger(CommentService.class);
 
     private static final String LOGIN_REQUIRED_MESSAGE = "Login diperlukan";
 
@@ -117,7 +121,7 @@ public class CommentService {
                 tier = tierResponse.tier();
             }
         } catch (Exception e) {
-            // Fault tolerance: Rust down, comment tetap tampil tanpa tier
+            log.debug("Tier fetch failed for comment user: {}", e.getMessage());
         }
 
         return CommentResponse.builder()
@@ -154,7 +158,7 @@ public class CommentService {
                 tier = tierResponse.tier();
             }
         } catch (Exception e) {
-            // Fault tolerance: Rust down, comment tetap tampil tanpa tier
+            log.debug("Tier fetch failed for comment user: {}", e.getMessage());
         }
 
         return CommentResponse.builder()
