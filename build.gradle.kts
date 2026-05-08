@@ -4,6 +4,7 @@ plugins {
     pmd
     id("org.springframework.boot") version "4.0.2"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.owasp.dependencycheck") version "12.1.3"
 }
 
 group = "id.ac.ui.cs.advprog"
@@ -35,6 +36,15 @@ tasks.withType<Pmd>().configureEach {
     }
 }
 
+dependencyCheck {
+    failBuildOnCVSS = 9.0f
+    analyzers {
+        assemblyEnabled = false
+        nugetconfEnabled = false
+        msbuildEnabled = false
+    }
+}
+
 repositories {
     mavenCentral()
 }
@@ -53,6 +63,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     runtimeOnly("org.postgresql:postgresql")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     testImplementation("com.h2database:h2")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("io.jsonwebtoken:jjwt-api:0.12.7")
