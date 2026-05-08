@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.auth.google.GoogleProfile;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
 import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
@@ -93,11 +94,11 @@ public class GoogleUserProvisioningService {
     }
 
     private String resolveGoogleDisplayName(GoogleLoginCommand command, GoogleProfile profile, String username) {
-        String requestDisplayName = normalize(command.displayName());
+        String requestDisplayName = SecuritySanitizer.html(command.displayName());
         if (requestDisplayName != null) {
             return requestDisplayName;
         }
-        String googleName = normalize(profile.name());
+        String googleName = SecuritySanitizer.html(profile.name());
         if (googleName != null) {
             return googleName;
         }
@@ -105,11 +106,7 @@ public class GoogleUserProvisioningService {
     }
 
     private String normalize(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return SecuritySanitizer.normalize(value);
     }
 
     public record ProvisionedGoogleUser(UserEntity user, boolean isNewUser) {

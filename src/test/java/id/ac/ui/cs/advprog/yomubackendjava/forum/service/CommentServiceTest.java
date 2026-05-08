@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -93,6 +94,29 @@ class CommentServiceTest {
         assertEquals(userId, response.getUserId());
         assertNull(response.getParentCommentId());
         verify(commentRepository, times(1)).save(any(Comment.class));
+    }
+
+    @Test
+    void createComment_shouldEscapeHtmlContentBeforeSaving() {
+        authenticateAs(userId, Role.PELAJAR);
+        CreateCommentRequest request = new CreateCommentRequest(null, "<img src=x onerror=alert(1)>");
+
+        when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> {
+            Comment saved = invocation.getArgument(0);
+            saved.setId(commentId);
+            saved.setCreatedAt(Instant.now());
+            saved.setReplies(new ArrayList<>());
+            return saved;
+        });
+        when(reactionService.getReactionCount(commentId, ReactionType.UPVOTE)).thenReturn(0);
+
+        CommentResponse response = commentService.createComment(articleId, request);
+
+        assertEquals("&lt;img src=x onerror=alert(1)&gt;", response.getContent());
+
+        ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
+        verify(commentRepository).save(captor.capture());
+        assertEquals("&lt;img src=x onerror=alert(1)&gt;", captor.getValue().getContent());
     }
 
     @Test

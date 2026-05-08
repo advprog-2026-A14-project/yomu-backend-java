@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
 import id.ac.ui.cs.advprog.yomubackendjava.security.CurrentUser;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
 import id.ac.ui.cs.advprog.yomubackendjava.user.dto.UpdateIdentifiersRequest;
@@ -62,7 +63,7 @@ public class UserService {
 
     public ApiResponse<UserDto> updateProfile(UpdateProfileRequest request) {
         String username = normalize(request.getUsername());
-        String displayName = normalize(request.getDisplayName());
+        String displayName = SecuritySanitizer.html(request.getDisplayName());
         validateProfilePayload(username, displayName);
 
         UserEntity user = assertActiveUser();
@@ -237,11 +238,7 @@ public class UserService {
     }
 
     private String normalize(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return SecuritySanitizer.normalize(value);
     }
 
     public record UserBatchResponseData(

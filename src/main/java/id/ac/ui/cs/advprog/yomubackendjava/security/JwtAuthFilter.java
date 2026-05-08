@@ -20,6 +20,7 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
     public static final String AUTHORIZATION_HEADER = "Authorization";
     public static final String BEARER_PREFIX = "Bearer ";
+    private static final int MAX_AUTHORIZATION_HEADER_LENGTH = 4096;
 
     private final JwtService jwtService;
     private final AuthenticationEntryPoint authenticationEntryPoint;
@@ -36,10 +37,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         String authHeader = request.getHeader(AUTHORIZATION_HEADER);
-        if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
-            String token = authHeader.substring(BEARER_PREFIX.length());
+        if (authHeader != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
+                String token = extractBearerToken(authHeader);
                 JwtService.JwtClaims claims = jwtService.parseAndValidate(token);
                 String authority = "ROLE_" + claims.role().name();
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -49,6 +49,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (UnauthorizedException ex) {
+                SecurityContextHolder.clearContext();
                 authenticationEntryPoint.commence(
                         request,
                         response,
@@ -58,5 +59,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    private String extractBearerToken(String authHeader) {
+        if (authHeader.length() > MAX_AUTHORIZATION_HEADER_LENGTH
+                || !authHeader.startsWith(BEARER_PREFIX)
+                || authHeader.length() == BEARER_PREFIX.length()) {
+            throw new UnauthorizedException("Invalid authorization header");
+        }
+        return authHeader.substring(BEARER_PREFIX.length()).trim();
     }
 }

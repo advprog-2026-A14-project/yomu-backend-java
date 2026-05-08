@@ -79,7 +79,25 @@ class SecurityIntegrationTest {
                         .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization"))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173"))
-                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true"));
+                .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS));
+    }
+
+    @Test
+    void corsPreflightFromUnknownOriginShouldBeRejected() throws Exception {
+        mockMvc.perform(options(SECURE_PING_PATH)
+                        .header(HttpHeaders.ORIGIN, "https://evil.example")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Authorization"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
+    }
+
+    @Test
+    void malformedAuthorizationHeaderShouldReturn401() throws Exception {
+        mockMvc.perform(get(SECURE_PING_PATH)
+                        .header(AUTHORIZATION_HEADER, "Basic abc"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false));
     }
 
     @Test

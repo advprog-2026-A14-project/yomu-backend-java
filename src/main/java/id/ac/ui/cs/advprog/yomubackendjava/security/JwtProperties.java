@@ -4,5 +4,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @ConfigurationProperties(prefix = "jwt")
-public record JwtProperties(String secret, @DefaultValue("86400") long ttlSeconds) {
+public record JwtProperties(
+        String secret,
+        @DefaultValue("86400") long ttlSeconds,
+        @DefaultValue("yomu-backend-java") String issuer,
+        @DefaultValue("yomu-clients") String audience
+) {
 }

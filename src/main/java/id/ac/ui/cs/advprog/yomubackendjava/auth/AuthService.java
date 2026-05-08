@@ -11,6 +11,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
 import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
@@ -63,7 +64,7 @@ public class AuthService {
 
     public ApiResponse<AuthResponseData> registerLocal(RegisterCommand command) {
         String username = normalize(command.username());
-        String displayName = normalize(command.displayName());
+        String displayName = SecuritySanitizer.html(command.displayName());
         String email = normalize(command.email());
         String phoneNumber = normalize(command.phoneNumber());
 
@@ -178,10 +179,6 @@ public class AuthService {
     }
 
     private String normalize(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return SecuritySanitizer.normalize(value);
     }
 }

@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.forum.service;
 
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CommentResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CreateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
@@ -49,7 +50,7 @@ public class CommentService {
         Comment comment = new Comment();
         comment.setArticleId(articleId);
         comment.setUserId(userId);
-        comment.setContent(request.getContent());
+        comment.setContent(SecuritySanitizer.html(request.getContent()));
 
         if (request.getParentCommentId() != null) {
             Comment parent = findCommentOrThrow(request.getParentCommentId());
@@ -76,7 +77,7 @@ public class CommentService {
         Comment comment = findCommentOrThrow(commentId);
         validateOwnership(comment, userId);
 
-        comment.setContent(request.getContent());
+        comment.setContent(SecuritySanitizer.html(request.getContent()));
         Comment updated = commentRepository.save(comment);
         return toResponse(updated);
     }
@@ -117,8 +118,8 @@ public class CommentService {
             RustLeagueClient.UserTierResponse tierResponse =
                     rustLeagueClient.getUserTier(comment.getUserId());
             if (tierResponse != null) {
-                clanName = tierResponse.clanName();
-                tier = tierResponse.tier();
+                clanName = SecuritySanitizer.html(tierResponse.clanName());
+                tier = SecuritySanitizer.html(tierResponse.tier());
             }
         } catch (Exception e) {
             log.debug("Tier fetch failed for comment user: {}", e.getMessage());
@@ -154,8 +155,8 @@ public class CommentService {
             RustLeagueClient.UserTierResponse tierResponse =
                     rustLeagueClient.getUserTier(comment.getUserId());
             if (tierResponse != null) {
-                clanName = tierResponse.clanName();
-                tier = tierResponse.tier();
+                clanName = SecuritySanitizer.html(tierResponse.clanName());
+                tier = SecuritySanitizer.html(tierResponse.tier());
             }
         } catch (Exception e) {
             log.debug("Tier fetch failed for comment user: {}", e.getMessage());
