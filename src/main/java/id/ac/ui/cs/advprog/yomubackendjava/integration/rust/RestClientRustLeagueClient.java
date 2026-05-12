@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.yomubackendjava.integration.rust;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -11,6 +12,7 @@ import java.time.Duration;
 import java.util.UUID;
 
 @Component
+@ConditionalOnProperty(name = "rust.integration.transport", havingValue = "rest")
 public class RestClientRustLeagueClient implements RustLeagueClient {
     private static final String USER_TIER_ENDPOINT = "/api/v1/league/users/{userId}/tier";
     private static final String API_KEY_HEADER = "x-api-key";
