@@ -43,8 +43,14 @@ dependencyCheck {
     failBuildOnCVSS = 9.0f
     formats = listOf("HTML", "SARIF")
     scanConfigurations = listOf("runtimeClasspath")
+    skipConfigurations = listOf("testRuntimeClasspath", "testCompileClasspath")
+    skipTestGroups = true
     data {
-        directory = file(".gradle/dependency-check-data").absolutePath
+        directory = providers
+            .systemProperty("org.owasp.dependencycheck.data.directory")
+            .orElse(providers.environmentVariable("DEPENDENCY_CHECK_DATA_DIRECTORY"))
+            .orElse(file(".gradle/dependency-check-data").absolutePath)
+            .get()
     }
     nvd {
         apiKey = System.getenv("NVD_API_KEY").orEmpty()
@@ -53,8 +59,12 @@ dependencyCheck {
         assemblyEnabled = false
         nugetconfEnabled = false
         msbuildEnabled = false
-        nodeAuditEnabled = false
-        ossIndexEnabled = false
+        nodeAudit {
+            enabled.set(false)
+        }
+        ossIndex {
+            enabled.set(false)
+        }
     }
 }
 
