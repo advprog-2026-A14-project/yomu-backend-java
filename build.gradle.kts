@@ -4,7 +4,7 @@ plugins {
     pmd
     id("org.springframework.boot") version "4.0.2"
     id("io.spring.dependency-management") version "1.1.7"
-    id("org.owasp.dependencycheck") version "12.1.3"
+    id("org.owasp.dependencycheck") version "12.2.2"
     id("com.google.protobuf") version "0.9.6"
 }
 
@@ -41,10 +41,20 @@ tasks.withType<Pmd>().configureEach {
 
 dependencyCheck {
     failBuildOnCVSS = 9.0f
+    formats = listOf("HTML", "SARIF")
+    scanConfigurations = listOf("runtimeClasspath")
+    data {
+        directory = file(".gradle/dependency-check-data").absolutePath
+    }
+    nvd {
+        apiKey = System.getenv("NVD_API_KEY").orEmpty()
+    }
     analyzers {
         assemblyEnabled = false
         nugetconfEnabled = false
         msbuildEnabled = false
+        nodeAuditEnabled = false
+        ossIndexEnabled = false
     }
 }
 

@@ -1,5 +1,6 @@
 HELP.md
 .gradle
+.gradle-user/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
@@ -38,6 +39,11 @@ out/
 
 # env files (can opt-in for committing if needed)
 .env*
+
+# local run output
+bootrun.*
+*.log
+logs/
 
 # Agent project docs
 AGENTS.md
