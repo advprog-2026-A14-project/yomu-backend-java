@@ -149,18 +149,19 @@ Admin operational flow:
 - `POST /api/v1/admin/failed-sync-events/retry` untuk retry manual.
 - Scheduler retry otomatis jalan tiap 5 menit untuk status `FAILED/PENDING` (bisa dikontrol lewat config).
 
-## 9) Load Balancer dan Replikasi Pod Java
-Service Java aman untuk load balancing karena auth menggunakan JWT stateless. Semua replica wajib memakai env secret/config yang sama: `JWT_SECRET`, `INTERNAL_API_KEY`, `GOOGLE_OAUTH_CLIENT_ID`, dan `RUST_ENGINE_BASE_URL`.
+## 9) Load Balancer dan Replikasi Container Java
+Service Java aman untuk load balancing karena auth menggunakan JWT stateless. Semua instance wajib memakai env secret/config yang sama: `JWT_SECRET`, `INTERNAL_API_KEY`, `GOOGLE_OAUTH_CLIENT_ID`, dan `RUST_ENGINE_BASE_URL`.
 
-Konfigurasi aplikasi yang mendukung deployment multi-pod:
-- `OUTBOX_SCHEDULER_ENABLED=false` untuk pod web biasa.
-- `OUTBOX_SCHEDULER_ENABLED=true` hanya untuk satu pod scheduler.
-- `DB_POOL_MAX_SIZE` dihitung dari budget koneksi PostgreSQL: `jumlah_pod * DB_POOL_MAX_SIZE`.
-- `CORS_ALLOWED_ORIGINS` diisi domain frontend yang mengakses backend lewat ingress/load balancer.
-- Readiness probe: `/actuator/health/readiness`.
-- Liveness probe: `/actuator/health/liveness`.
+Konfigurasi aplikasi yang mendukung deployment multi-instance tanpa Kubernetes:
+- Jalankan beberapa instance web Java di balik reverse proxy/load balancer seperti Nginx, Caddy, HAProxy, atau load balancer bawaan PaaS.
+- `OUTBOX_SCHEDULER_ENABLED=false` untuk semua instance web biasa.
+- `OUTBOX_SCHEDULER_ENABLED=true` hanya untuk satu instance scheduler agar retry outbox tidak berjalan paralel dari banyak instance.
+- `DB_POOL_MAX_SIZE` dihitung dari budget koneksi PostgreSQL: `jumlah_instance * DB_POOL_MAX_SIZE`.
+- `CORS_ALLOWED_ORIGINS` diisi domain frontend yang mengakses backend lewat reverse proxy/load balancer.
+- Health check web/readiness: `/actuator/health/readiness`.
+- Health check liveness: `/actuator/health/liveness`.
 
-Template Kubernetes tersedia di `k8s/java-core-service.yaml`. Manifest tersebut membuat `Deployment` web dengan 3 replica, satu `Deployment` scheduler outbox, `Service` internal untuk load balancing ke pod web saja, dan `Ingress` publik.
+Untuk deployment sederhana, gunakan `docker-compose.yml` sebagai baseline lokal/staging, lalu pisahkan service web dan scheduler di platform production dengan environment variable yang berbeda.
 
 ## 10) Struktur Folder dan Fungsinya
 Folder penting di `src/main/java/id/ac/ui/cs/advprog/yomubackendjava`:
