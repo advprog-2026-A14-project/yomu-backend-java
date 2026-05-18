@@ -7,17 +7,23 @@ import id.ac.ui.cs.advprog.yomubackendjava.proto.league.GetLeaderboardRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.proto.league.LeaderboardEntry;
 import id.ac.ui.cs.advprog.yomubackendjava.proto.league.JoinClanRequest;
 import io.grpc.ManagedChannel;
+import io.grpc.Metadata;
 import io.grpc.StatusRuntimeException;
-import org.springframework.stereotype.Component;
+import io.grpc.stub.MetadataUtils;
 
+import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class GrpcLeagueClient implements RustLeagueClient {
 
     private final LeagueServiceGrpc.LeagueServiceBlockingStub stub;
+    private final Duration deadline;
 
-    public GrpcLeagueClient(ManagedChannel rustEngineChannel) {
-        this.stub = LeagueServiceGrpc.newBlockingStub(rustEngineChannel);
+    public GrpcLeagueClient(ManagedChannel rustEngineChannel, Metadata metadata, Duration deadline) {
+        this.stub = LeagueServiceGrpc.newBlockingStub(rustEngineChannel)
+                .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
+        this.deadline = deadline;
     }
 
     @Override
@@ -26,7 +32,8 @@ public class GrpcLeagueClient implements RustLeagueClient {
             var request = GetUserTierRequest.newBuilder()
                     .setUserId(userId.toString())
                     .build();
-            var response = stub.getUserTier(request);
+            var response = stub.withDeadlineAfter(deadline.toMillis(), TimeUnit.MILLISECONDS)
+                    .getUserTier(request);
 
             UUID clanId = null;
             if (!response.getClanId().isEmpty()) {

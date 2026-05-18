@@ -6,10 +6,13 @@ import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.Quiz;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.QuizRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service.QuizService;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
+import id.ac.ui.cs.advprog.yomubackendjava.security.CurrentUser;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/quizzes")
@@ -39,7 +42,9 @@ public class QuizController {
             @PathVariable("article_id") String articleId,
             @RequestBody QuizSyncRequest request) {
         request.setArticleId(articleId);
-        quizService.submitAndSync(request);
+        UUID userId = CurrentUser.userId()
+                .orElseThrow(() -> new UnauthorizedException("Login diperlukan"));
+        quizService.submitAndSync(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Jawaban berhasil dikirim", null));
     }
 }

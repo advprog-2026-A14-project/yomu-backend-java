@@ -67,6 +67,23 @@ class UpdateAccountTest {
     }
 
     @Test
+    void updateDisplayNameShouldEscapeHtml() throws Exception {
+        UserEntity user = saveUser("upd_xss", "Display Lama", "upd.xss@example.com", null, RAW_PASSWORD);
+        String token = tokenFor(user);
+
+        mockMvc.perform(patch(ME_PATH)
+                        .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + token)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "display_name": "<script>alert(1)</script>"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.display_name").value("&lt;script&gt;alert(1)&lt;/script&gt;"));
+    }
+
+    @Test
     void updateUsernameConflictShouldReturn409() throws Exception {
         saveUser("username_exist", "Exist", "exist@example.com", null, RAW_PASSWORD);
         UserEntity user = saveUser("username_target", "Target", "target@example.com", null, RAW_PASSWORD);

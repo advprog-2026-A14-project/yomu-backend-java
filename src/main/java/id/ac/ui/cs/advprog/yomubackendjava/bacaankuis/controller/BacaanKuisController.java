@@ -19,7 +19,6 @@ import java.util.List;
 @Deprecated
 @RestController
 @RequestMapping({"/api/bacaankuis", "/api/v1/bacaankuis"})
-@CrossOrigin(origins = "*")
 public class BacaanKuisController {
     private final ArticleRepository articleRepository;
 

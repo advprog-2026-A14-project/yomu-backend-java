@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 public class QuizService {
@@ -23,7 +24,16 @@ public class QuizService {
 
     @Transactional
     public void submitAndSync(QuizSyncRequest request) {
+        submitAndSync(request == null ? null : request.getUserId(), request);
+    }
+
+    @Transactional
+    public void submitAndSync(UUID authenticatedUserId, QuizSyncRequest request) {
         validateRequest(request);
+        if (authenticatedUserId == null) {
+            throw new BadRequestException("user_id wajib diisi");
+        }
+        request.setUserId(authenticatedUserId);
 
         if (attemptRepository.existsByUserIdAndKuisId(request.getUserId(), request.getArticleId())) {
             throw new ConflictException("Kuis sudah pernah dikerjakan!");

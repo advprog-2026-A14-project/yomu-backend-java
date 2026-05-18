@@ -1,5 +1,6 @@
 # Gradle
 .gradle/
+.gradle-user/
 build/
 !build/libs/*.jar
 
@@ -16,6 +17,7 @@ Thumbs.db
 
 # Logs
 *.log
+bootrun.*
 logs/
 
 # Environment
