@@ -130,6 +130,29 @@ class CommentReactionControllerTest {
     }
 
     @Test
+    void toggleReaction_downvoteRequest_shouldReturnDownvoteResponse() throws Exception {
+        authenticateAs(userId, Role.PELAJAR);
+
+        ReactionRequest request = new ReactionRequest(ReactionType.DOWNVOTE);
+        ReactionResponse response = ReactionResponse.builder()
+                .commentId(commentId)
+                .reactionType(ReactionType.DOWNVOTE)
+                .reacted(true)
+                .reactionCount(1)
+                .build();
+
+        when(reactionService.toggleReaction(eq(commentId), eq(ReactionType.DOWNVOTE)))
+                .thenReturn(response);
+
+        mockMvc.perform(post(REACTION_ENDPOINT, commentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(JSON_SUCCESS).value(true))
+                .andExpect(jsonPath("$.data.reaction_type").value("DOWNVOTE"));
+    }
+
+    @Test
     void toggleReaction_noAuth_shouldReturn401() throws Exception {
         ReactionRequest request = new ReactionRequest(ReactionType.UPVOTE);
 

@@ -127,6 +127,26 @@ class CommentReactionServiceTest {
     }
 
     @Test
+    void toggleReaction_downvote_shouldUseDownvoteStrategy() {
+        authenticateAs(userId, Role.PELAJAR);
+
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
+        when(strategyFactory.resolve(ReactionType.DOWNVOTE)).thenReturn(reactionStrategy);
+        when(reactionRepository.findByCommentIdAndUserIdAndReactionTypeForUpdate(
+                commentId, userId, ReactionType.DOWNVOTE))
+                .thenReturn(Optional.empty());
+        when(reactionRepository.countByCommentIdAndReactionType(commentId, ReactionType.DOWNVOTE))
+                .thenReturn(1);
+
+        ReactionResponse response = reactionService.toggleReaction(commentId, ReactionType.DOWNVOTE);
+
+        assertTrue(response.isReacted());
+        assertEquals(ReactionType.DOWNVOTE, response.getReactionType());
+        verify(reactionRepository).save(any(CommentReaction.class));
+        verify(reactionStrategy).onReactionAdded(commentId, userId);
+    }
+
+    @Test
     void toggleReaction_noAuth_shouldThrowUnauthorized() {
         assertThrows(UnauthorizedException.class,
                 () -> reactionService.toggleReaction(commentId, ReactionType.UPVOTE));

@@ -4,8 +4,8 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType;
 import org.springframework.stereotype.Component;
 
 @Component
-public class UpvoteReactionStrategy extends AbstractLoggingReactionStrategy {
-    public UpvoteReactionStrategy() {
-        super(ReactionType.UPVOTE);
+public class EmojiReactionStrategy extends AbstractLoggingReactionStrategy {
+    public EmojiReactionStrategy() {
+        super(ReactionType.EMOJI);
     }
 }
