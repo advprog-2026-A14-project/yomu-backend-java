@@ -1,8 +1,10 @@
 package id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service;
 
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizQuestionResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.integration.QuizSyncClient;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.UserAttempt;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.QuizRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.UserAttemptRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
@@ -10,21 +12,33 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 public class QuizService {
     private final UserAttemptRepository attemptRepository;
+    private final QuizRepository quizRepository;
     private final QuizSyncClient quizSyncClient;
 
-    public QuizService(UserAttemptRepository attemptRepository, QuizSyncClient quizSyncClient) {
+    public QuizService(
+            UserAttemptRepository attemptRepository,
+            QuizRepository quizRepository,
+            QuizSyncClient quizSyncClient) {
         this.attemptRepository = attemptRepository;
+        this.quizRepository = quizRepository;
         this.quizSyncClient = quizSyncClient;
     }
 
-    @Transactional
-    public void submitAndSync(QuizSyncRequest request) {
-        submitAndSync(request == null ? null : request.getUserId(), request);
+    public List<QuizQuestionResponse> getAvailableQuizzes(UUID userId, String articleId) {
+        if (attemptRepository.existsByUserIdAndKuisId(userId, articleId)) {
+            throw new ConflictException("Kuis sudah pernah diselesaikan");
+        }
+
+        return quizRepository.findByArticleId(articleId)
+                .stream()
+                .map(QuizQuestionResponse::new)
+                .toList();
     }
 
     @Transactional
@@ -51,9 +65,6 @@ public class QuizService {
     private void validateRequest(QuizSyncRequest request) {
         if (request == null) {
             throw new BadRequestException("Request kuis tidak boleh kosong");
-        }
-        if (request.getUserId() == null) {
-            throw new BadRequestException("user_id wajib diisi");
         }
         if (request.getArticleId() == null || request.getArticleId().isBlank()) {
             throw new BadRequestException("article_id wajib diisi");

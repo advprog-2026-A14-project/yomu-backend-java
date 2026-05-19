@@ -51,6 +51,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/me", "/api/v1/users/**", "/api/v1/secure/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/quizzes/*/submit").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/quizzes/*").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/quizzes/*/submit").authenticated()
                         .anyRequest().permitAll()
                 )
                 .exceptionHandling(exception -> exception
