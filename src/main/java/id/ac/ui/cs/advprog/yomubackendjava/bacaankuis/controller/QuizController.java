@@ -1,8 +1,9 @@
 package id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.controller;
 
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizQuestionResponse;
-import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSubmitRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service.QuizService;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSubmitResult;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.yomubackendjava.security.CurrentUser;
@@ -33,15 +34,13 @@ public class QuizController {
     }
 
     @PostMapping("/{article_id}/submit")
-    public ResponseEntity<ApiResponse<Void>> submitQuiz(
+    public ResponseEntity<ApiResponse<QuizSubmitResult>> submitQuiz(
             @PathVariable("article_id") String articleId,
-            @RequestBody QuizSyncRequest request) {
-        request.setArticleId(articleId);
-
+            @RequestBody QuizSubmitRequest request) {
         UUID userId = CurrentUser.userId()
                 .orElseThrow(() -> new UnauthorizedException("Login diperlukan"));
 
-        quizService.submitAndSync(userId, request);
-        return ResponseEntity.ok(ApiResponse.success("Jawaban berhasil dikirim", null));
+        QuizSubmitResult result = quizService.submitAndSync(userId, articleId, request);
+        return ResponseEntity.ok(ApiResponse.success("Jawaban berhasil dikirim", result));
     }
 }
