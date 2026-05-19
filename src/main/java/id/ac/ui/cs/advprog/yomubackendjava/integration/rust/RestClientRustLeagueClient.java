@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.integration.rust;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -16,6 +17,7 @@ public class RestClientRustLeagueClient implements RustLeagueClient {
 
     private final RestClient restClient;
 
+    @Autowired
     public RestClientRustLeagueClient(
             @Value("${rust.engine.base-url:http://localhost:8080}") String baseUrl,
             @Value("${internal.api.key:}") String internalApiKey

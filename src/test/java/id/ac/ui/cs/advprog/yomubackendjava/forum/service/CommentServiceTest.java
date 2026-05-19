@@ -77,7 +77,7 @@ class CommentServiceTest {
         Article article = new Article();
         article.setId(articleId);
         article.setTitle("Artikel forum");
-        when(articleService.findById(articleId)).thenReturn(article);
+        lenient().when(articleService.findById(articleId)).thenReturn(article);
     }
 
     @AfterEach
