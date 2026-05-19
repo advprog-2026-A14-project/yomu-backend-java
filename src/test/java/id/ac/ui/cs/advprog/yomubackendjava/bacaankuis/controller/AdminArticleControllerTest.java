@@ -29,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class AdminArticleControllerTest {
+    private static final String ARTICLE_ID = "art-001";
 
     @Autowired
     private MockMvc mockMvc;
@@ -51,17 +52,17 @@ class AdminArticleControllerTest {
     void createArticle_whenAdmin_returnsCreatedArticle() throws Exception {
         String token = jwtService.generateToken(UUID.randomUUID(), Role.ADMIN);
 
-        Article created = new Article("art-001", "Judul Bacaan", "Isi bacaan", "Olahraga");
+        Article created = new Article(ARTICLE_ID, "Judul Bacaan", "Isi bacaan", "Olahraga");
         when(articleService.createArticle(Mockito.any(ArticleCreateRequest.class))).thenReturn(created);
 
         String json = """
         {
-            "id": "art-001",
+            "id": "%s",
             "title": "Judul Bacaan",
             "content": "Isi bacaan",
             "category": "Olahraga"
         }
-        """;
+        """.formatted(ARTICLE_ID);
 
         mockMvc.perform(post("/api/v1/admin/articles")
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + token)
@@ -69,12 +70,12 @@ class AdminArticleControllerTest {
                         .content(json))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").value("art-001"))
+                .andExpect(jsonPath("$.data.id").value(ARTICLE_ID))
                 .andExpect(jsonPath("$.data.category").value("Olahraga"));
 
         ArgumentCaptor<ArticleCreateRequest> captor = ArgumentCaptor.forClass(ArticleCreateRequest.class);
         verify(articleService).createArticle(captor.capture());
-        assertEquals("art-001", captor.getValue().getId());
+        assertEquals(ARTICLE_ID, captor.getValue().getId());
         assertEquals("Judul Bacaan", captor.getValue().getTitle());
     }
 
@@ -84,12 +85,12 @@ class AdminArticleControllerTest {
 
         String json = """
         {
-            "id": "art-001",
+            "id": "%s",
             "title": "Judul Bacaan",
             "content": "Isi bacaan",
             "category": "Olahraga"
         }
-        """;
+        """.formatted(ARTICLE_ID);
 
         mockMvc.perform(post("/api/v1/admin/articles")
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + token)
@@ -103,11 +104,11 @@ class AdminArticleControllerTest {
     void deleteArticle_whenAdmin_returnsSuccess() throws Exception {
         String token = jwtService.generateToken(UUID.randomUUID(), Role.ADMIN);
 
-        mockMvc.perform(delete("/api/v1/admin/articles/art-001")
+        mockMvc.perform(delete("/api/v1/admin/articles/{articleId}", ARTICLE_ID)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(articleService).deleteArticle("art-001");
+        verify(articleService).deleteArticle(ARTICLE_ID);
     }
 }
