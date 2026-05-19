@@ -40,7 +40,7 @@ class QuizServiceTest {
 
         assertThrows(ConflictException.class, () -> quizService.submitAndSync(userId, request));
 
-        verify(attemptRepository, never()).save(any(UserAttempt.class));
+        verify(attemptRepository, never()).saveAndFlush(any(UserAttempt.class));
         verify(quizSyncClient, never()).sync(any());
     }
 
@@ -54,7 +54,7 @@ class QuizServiceTest {
         quizService.submitAndSync(userId, request);
 
         ArgumentCaptor<UserAttempt> captor = ArgumentCaptor.forClass(UserAttempt.class);
-        verify(attemptRepository).save(captor.capture());
+        verify(attemptRepository).saveAndFlush(captor.capture());
         verify(quizSyncClient).sync(request);
 
         UserAttempt savedAttempt = captor.getValue();
@@ -69,7 +69,7 @@ class QuizServiceTest {
 
         assertThrows(BadRequestException.class, () -> quizService.submitAndSync(null, request));
 
-        verify(attemptRepository, never()).save(any(UserAttempt.class));
+        verify(attemptRepository, never()).saveAndFlush(any(UserAttempt.class));
         verify(quizSyncClient, never()).sync(any());
     }
 
@@ -84,7 +84,7 @@ class QuizServiceTest {
         quizService.submitAndSync(authenticatedUserId, request);
 
         ArgumentCaptor<UserAttempt> captor = ArgumentCaptor.forClass(UserAttempt.class);
-        verify(attemptRepository).save(captor.capture());
+        verify(attemptRepository).saveAndFlush(captor.capture());
         assertEquals(authenticatedUserId, captor.getValue().getUserId());
         assertEquals(authenticatedUserId, request.getUserId());
         verify(quizSyncClient).sync(request);
