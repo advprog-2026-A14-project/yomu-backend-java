@@ -10,6 +10,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -57,7 +58,12 @@ public class QuizService {
         attempt.setUserId(request.getUserId());
         attempt.setKuisId(request.getArticleId());
         attempt.setCompletedAt(LocalDateTime.now());
-        attemptRepository.save(attempt);
+
+        try {
+            attemptRepository.saveAndFlush(attempt);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ConflictException("Kuis sudah pernah dikerjakan!");
+        }
 
         quizSyncClient.sync(request);
     }
