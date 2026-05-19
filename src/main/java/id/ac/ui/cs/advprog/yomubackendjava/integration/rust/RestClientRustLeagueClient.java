@@ -14,7 +14,7 @@ import java.util.UUID;
 @Component
 @ConditionalOnProperty(name = "rust.integration.transport", havingValue = "rest")
 public class RestClientRustLeagueClient implements RustLeagueClient {
-    private static final String USER_TIER_ENDPOINT = "/api/v1/league/users/{userId}/tier";
+    private static final String USER_TIER_ENDPOINT = "/api/internal/league/users/{userId}/tier";
     private static final String API_KEY_HEADER = "x-api-key";
 
     private final RestClient restClient;

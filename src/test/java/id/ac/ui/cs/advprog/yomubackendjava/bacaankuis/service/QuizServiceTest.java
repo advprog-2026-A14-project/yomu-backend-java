@@ -11,6 +11,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.QuizRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.UserAttemptRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
+import id.ac.ui.cs.advprog.yomubackendjava.outbox.OutboxService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -39,6 +40,9 @@ class QuizServiceTest {
 
     @Mock
     private QuizRepository quizRepository;
+
+    @Mock
+    private OutboxService outboxService;
 
     @InjectMocks
     private QuizService quizService;
@@ -136,6 +140,29 @@ class QuizServiceTest {
         assertEquals(100.0, result.getAccuracy());
         assertEquals(2, result.getCorrectCount());
         assertEquals(2, result.getTotalQuestions());
+    }
+
+    @Test
+    void submitAndSync_whenRustSyncFails_recordsOutboxAndKeepsResult() {
+        UUID userId = UUID.randomUUID();
+        QuizSubmitRequest request = new QuizSubmitRequest(List.of(
+                new QuizAnswerRequest(FIRST_QUIZ_ID, "A"),
+                new QuizAnswerRequest(SECOND_QUIZ_ID, "C")
+        ));
+
+        when(attemptRepository.existsByUserIdAndKuisId(userId, ARTICLE_ID)).thenReturn(false);
+        when(quizRepository.findByArticleId(ARTICLE_ID)).thenReturn(List.of(
+                new Quiz(FIRST_QUIZ_ID, ARTICLE_ID, "Question 1", QUIZ_OPTIONS, "A"),
+                new Quiz(SECOND_QUIZ_ID, ARTICLE_ID, "Question 2", QUIZ_OPTIONS, "C")
+        ));
+        doThrow(new RuntimeException("rust timeout"))
+                .when(quizSyncClient).sync(any(QuizSyncRequest.class));
+
+        QuizSubmitResult result = quizService.submitAndSync(userId, ARTICLE_ID, request);
+
+        assertEquals(100.0, result.getScore());
+        verify(attemptRepository).saveAndFlush(any(UserAttempt.class));
+        verify(outboxService).recordQuizSyncFailure(any(QuizSyncRequest.class), eq("rust timeout"));
     }
 
     @Test
