@@ -6,6 +6,11 @@ import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.UserAttempt;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.UserAttemptRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizAnswerRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSubmitRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.Quiz;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.QuizRepository;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -14,9 +19,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.UUID;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+
 
 @ExtendWith(MockitoExtension.class)
 class QuizServiceTest {
@@ -27,6 +34,15 @@ class QuizServiceTest {
 
     @Mock
     private QuizSyncClient quizSyncClient;
+
+    @Mock
+    private UserAttemptRepository attemptRepository;
+
+    @Mock
+    private QuizSyncClient quizSyncClient;
+
+    @Mock
+    private QuizRepository quizRepository;
 
     @InjectMocks
     private QuizService quizService;
@@ -88,5 +104,54 @@ class QuizServiceTest {
         assertEquals(authenticatedUserId, captor.getValue().getUserId());
         assertEquals(authenticatedUserId, request.getUserId());
         verify(quizSyncClient).sync(request);
+    }
+
+    @Test
+    void submitAndSync_whenAnswersAreCorrect_calculatesFullScoreAndSyncsToRust() {
+        UUID userId = UUID.randomUUID();
+        QuizSubmitRequest request = new QuizSubmitRequest(List.of(
+                new QuizAnswerRequest("quiz-1", "A"),
+                new QuizAnswerRequest("quiz-2", "C")
+        ));
+
+        when(attemptRepository.existsByUserIdAndKuisId(userId, ARTICLE_ID)).thenReturn(false);
+        when(quizRepository.findByArticleId(ARTICLE_ID)).thenReturn(List.of(
+                new Quiz("quiz-1", ARTICLE_ID, "Question 1", "A;B;C;D", "A"),
+                new Quiz("quiz-2", ARTICLE_ID, "Question 2", "A;B;C;D", "C")
+        ));
+
+        quizService.submitAndSync(userId, ARTICLE_ID, request);
+
+        ArgumentCaptor<QuizSyncRequest> syncCaptor = ArgumentCaptor.forClass(QuizSyncRequest.class);
+        verify(quizSyncClient).sync(syncCaptor.capture());
+
+        QuizSyncRequest syncRequest = syncCaptor.getValue();
+        assertEquals(userId, syncRequest.getUserId());
+        assertEquals(ARTICLE_ID, syncRequest.getArticleId());
+        assertEquals(100.0, syncRequest.getScore());
+        assertEquals(100.0, syncRequest.getAccuracy());
+    }
+
+    @Test
+    void submitAndSync_whenSomeAnswersWrong_calculatesPartialScore() {
+        UUID userId = UUID.randomUUID();
+        QuizSubmitRequest request = new QuizSubmitRequest(List.of(
+                new QuizAnswerRequest("quiz-1", "A"),
+                new QuizAnswerRequest("quiz-2", "D")
+        ));
+
+        when(attemptRepository.existsByUserIdAndKuisId(userId, ARTICLE_ID)).thenReturn(false);
+        when(quizRepository.findByArticleId(ARTICLE_ID)).thenReturn(List.of(
+                new Quiz("quiz-1", ARTICLE_ID, "Question 1", "A;B;C;D", "A"),
+                new Quiz("quiz-2", ARTICLE_ID, "Question 2", "A;B;C;D", "C")
+        ));
+
+        quizService.submitAndSync(userId, ARTICLE_ID, request);
+
+        ArgumentCaptor<QuizSyncRequest> syncCaptor = ArgumentCaptor.forClass(QuizSyncRequest.class);
+        verify(quizSyncClient).sync(syncCaptor.capture());
+
+        assertEquals(50.0, syncCaptor.getValue().getScore());
+        assertEquals(50.0, syncCaptor.getValue().getAccuracy());
     }
 }
