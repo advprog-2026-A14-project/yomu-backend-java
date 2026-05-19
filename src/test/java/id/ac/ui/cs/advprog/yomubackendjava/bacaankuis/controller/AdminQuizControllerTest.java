@@ -32,6 +32,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class AdminQuizControllerTest {
+    private static final String ARTICLE_ID = "art-001";
+    private static final String QUIZ_ID = "quiz-001";
+    private static final String QUIZ_OPTIONS = "A;B;C;D";
+    private static final String JSON_SUCCESS = "$.success";
 
     @Autowired
     private MockMvc mockMvc;
@@ -53,32 +57,32 @@ class AdminQuizControllerTest {
     @Test
     void createQuiz_whenAdmin_returnsCreatedQuiz() throws Exception {
         String token = jwtService.generateToken(UUID.randomUUID(), Role.ADMIN);
-        Quiz created = new Quiz("quiz-001", "art-001", "Apa ide utama teks?", "A;B;C;D", "A");
+        Quiz created = new Quiz(QUIZ_ID, ARTICLE_ID, "Apa ide utama teks?", QUIZ_OPTIONS, "A");
 
-        when(quizManagementService.createQuiz(eq("art-001"), Mockito.any(QuizCreateRequest.class)))
+        when(quizManagementService.createQuiz(eq(ARTICLE_ID), Mockito.any(QuizCreateRequest.class)))
                 .thenReturn(created);
 
         String json = """
         {
-            "id": "quiz-001",
+            "id": "%s",
             "question": "Apa ide utama teks?",
-            "options": "A;B;C;D",
+            "options": "%s",
             "answer": "A"
         }
-        """;
+        """.formatted(QUIZ_ID, QUIZ_OPTIONS);
 
-        mockMvc.perform(post("/api/v1/admin/articles/art-001/quizzes")
+        mockMvc.perform(post("/api/v1/admin/articles/{articleId}/quizzes", ARTICLE_ID)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").value("quiz-001"))
-                .andExpect(jsonPath("$.data.article_id").value("art-001"));
+                .andExpect(jsonPath(JSON_SUCCESS).value(true))
+                .andExpect(jsonPath("$.data.id").value(QUIZ_ID))
+                .andExpect(jsonPath("$.data.article_id").value(ARTICLE_ID));
 
         ArgumentCaptor<QuizCreateRequest> captor = ArgumentCaptor.forClass(QuizCreateRequest.class);
-        verify(quizManagementService).createQuiz(eq("art-001"), captor.capture());
-        assertEquals("quiz-001", captor.getValue().getId());
+        verify(quizManagementService).createQuiz(eq(ARTICLE_ID), captor.capture());
+        assertEquals(QUIZ_ID, captor.getValue().getId());
         assertEquals("A", captor.getValue().getAnswer());
     }
 
@@ -88,58 +92,58 @@ class AdminQuizControllerTest {
 
         String json = """
         {
-            "id": "quiz-001",
+            "id": "%s",
             "question": "Apa ide utama teks?",
-            "options": "A;B;C;D",
+            "options": "%s",
             "answer": "A"
         }
-        """;
+        """.formatted(QUIZ_ID, QUIZ_OPTIONS);
 
-        mockMvc.perform(post("/api/v1/admin/articles/art-001/quizzes")
+        mockMvc.perform(post("/api/v1/admin/articles/{articleId}/quizzes", ARTICLE_ID)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(jsonPath(JSON_SUCCESS).value(false));
     }
 
     @Test
     void updateQuiz_whenAdmin_returnsUpdatedQuiz() throws Exception {
         String token = jwtService.generateToken(UUID.randomUUID(), Role.ADMIN);
-        Quiz updated = new Quiz("quiz-001", "art-001", "Pertanyaan baru?", "A;B;C;D", "B");
+        Quiz updated = new Quiz(QUIZ_ID, ARTICLE_ID, "Pertanyaan baru?", QUIZ_OPTIONS, "B");
 
-        when(quizManagementService.updateQuiz(eq("quiz-001"), Mockito.any(QuizUpdateRequest.class)))
+        when(quizManagementService.updateQuiz(eq(QUIZ_ID), Mockito.any(QuizUpdateRequest.class)))
                 .thenReturn(updated);
 
         String json = """
         {
             "question": "Pertanyaan baru?",
-            "options": "A;B;C;D",
+            "options": "%s",
             "answer": "B"
         }
-        """;
+        """.formatted(QUIZ_OPTIONS);
 
-        mockMvc.perform(patch("/api/v1/admin/quizzes/quiz-001")
+        mockMvc.perform(patch("/api/v1/admin/quizzes/{quizId}", QUIZ_ID)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").value("quiz-001"))
+                .andExpect(jsonPath(JSON_SUCCESS).value(true))
+                .andExpect(jsonPath("$.data.id").value(QUIZ_ID))
                 .andExpect(jsonPath("$.data.answer").value("B"));
 
-        verify(quizManagementService).updateQuiz(eq("quiz-001"), Mockito.any(QuizUpdateRequest.class));
+        verify(quizManagementService).updateQuiz(eq(QUIZ_ID), Mockito.any(QuizUpdateRequest.class));
     }
 
     @Test
     void deleteQuiz_whenAdmin_returnsSuccess() throws Exception {
         String token = jwtService.generateToken(UUID.randomUUID(), Role.ADMIN);
 
-        mockMvc.perform(delete("/api/v1/admin/quizzes/quiz-001")
+        mockMvc.perform(delete("/api/v1/admin/quizzes/{quizId}", QUIZ_ID)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(JSON_SUCCESS).value(true));
 
-        verify(quizManagementService).deleteQuiz("quiz-001");
+        verify(quizManagementService).deleteQuiz(QUIZ_ID);
     }
 }

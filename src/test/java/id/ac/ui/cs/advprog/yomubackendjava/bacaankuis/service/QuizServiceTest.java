@@ -27,6 +27,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class QuizServiceTest {
     private static final String ARTICLE_ID = "article-123";
+    private static final String FIRST_QUIZ_ID = "quiz-1";
+    private static final String SECOND_QUIZ_ID = "quiz-2";
+    private static final String QUIZ_OPTIONS = "A;B;C;D";
 
     @Mock
     private UserAttemptRepository attemptRepository;
@@ -103,14 +106,14 @@ class QuizServiceTest {
     void submitAndSync_whenAnswersAreCorrect_calculatesFullScoreAndSyncsToRust() {
         UUID userId = UUID.randomUUID();
         QuizSubmitRequest request = new QuizSubmitRequest(List.of(
-                new QuizAnswerRequest("quiz-1", "A"),
-                new QuizAnswerRequest("quiz-2", "C")
+                new QuizAnswerRequest(FIRST_QUIZ_ID, "A"),
+                new QuizAnswerRequest(SECOND_QUIZ_ID, "C")
         ));
 
         when(attemptRepository.existsByUserIdAndKuisId(userId, ARTICLE_ID)).thenReturn(false);
         when(quizRepository.findByArticleId(ARTICLE_ID)).thenReturn(List.of(
-                new Quiz("quiz-1", ARTICLE_ID, "Question 1", "A;B;C;D", "A"),
-                new Quiz("quiz-2", ARTICLE_ID, "Question 2", "A;B;C;D", "C")
+                new Quiz(FIRST_QUIZ_ID, ARTICLE_ID, "Question 1", QUIZ_OPTIONS, "A"),
+                new Quiz(SECOND_QUIZ_ID, ARTICLE_ID, "Question 2", QUIZ_OPTIONS, "C")
         ));
 
         QuizSubmitResult result = quizService.submitAndSync(userId, ARTICLE_ID, request);
@@ -139,14 +142,14 @@ class QuizServiceTest {
     void submitAndSync_whenSomeAnswersWrong_calculatesPartialScore() {
         UUID userId = UUID.randomUUID();
         QuizSubmitRequest request = new QuizSubmitRequest(List.of(
-                new QuizAnswerRequest("quiz-1", "A"),
-                new QuizAnswerRequest("quiz-2", "D")
+                new QuizAnswerRequest(FIRST_QUIZ_ID, "A"),
+                new QuizAnswerRequest(SECOND_QUIZ_ID, "D")
         ));
 
         when(attemptRepository.existsByUserIdAndKuisId(userId, ARTICLE_ID)).thenReturn(false);
         when(quizRepository.findByArticleId(ARTICLE_ID)).thenReturn(List.of(
-                new Quiz("quiz-1", ARTICLE_ID, "Question 1", "A;B;C;D", "A"),
-                new Quiz("quiz-2", ARTICLE_ID, "Question 2", "A;B;C;D", "C")
+                new Quiz(FIRST_QUIZ_ID, ARTICLE_ID, "Question 1", QUIZ_OPTIONS, "A"),
+                new Quiz(SECOND_QUIZ_ID, ARTICLE_ID, "Question 2", QUIZ_OPTIONS, "C")
         ));
 
         QuizSubmitResult result = quizService.submitAndSync(userId, ARTICLE_ID, request);

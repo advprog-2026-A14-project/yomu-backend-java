@@ -188,7 +188,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private void seedArticles() {
         log.info("  [2/7] Seeding 6 articles...");
 
-        articleRepository.save(buildArticle("art-001", "Introduction to Bahasa Indonesia",
+        articleRepository.save(buildArticle(ART_ID_1, "Introduction to Bahasa Indonesia",
                 "Bahasa Indonesia is the official language of Indonesia. It is a standardized register of Malay, "
                         + "an Austronesian language. The language has a relatively simple grammar: no tenses, no gender, "
                         + "and no plural forms for nouns. Plurality is expressed by reduplication (e.g., anak = child, "
@@ -197,7 +197,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "meaning words are pronounced as they are written.",
                 CATEGORY_LANGUAGE));
 
-        articleRepository.save(buildArticle("art-002", "English Grammar Fundamentals",
+        articleRepository.save(buildArticle(ART_ID_2, "English Grammar Fundamentals",
                 "English grammar is the set of structural rules that govern the composition of clauses, phrases, "
                         + "and words in the English language. Key aspects include parts of speech (nouns, verbs, "
                         + "adjectives, adverbs, pronouns, prepositions, conjunctions, interjections), tenses "
@@ -206,7 +206,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "and uses auxiliary verbs extensively for questions and negation.",
                 CATEGORY_LANGUAGE));
 
-        articleRepository.save(buildArticle("art-003", "Japanese Hiragana Guide",
+        articleRepository.save(buildArticle(ART_ID_3, "Japanese Hiragana Guide",
                 "Hiragana is one of the three writing systems used in Japanese, alongside Katakana and Kanji. "
                         + "It consists of 46 basic characters, each representing a distinct sound (mora). "
                         + "Hiragana is a phonetic script, meaning each character corresponds to a specific syllable. "
@@ -215,7 +215,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "Learning hiragana is the essential first step for any Japanese language learner.",
                 CATEGORY_LANGUAGE));
 
-        articleRepository.save(buildArticle("art-004", "French Pronunciation Tips",
+        articleRepository.save(buildArticle(ART_ID_4, "French Pronunciation Tips",
                 "French pronunciation can be challenging for English speakers. Key features include nasal vowels "
                         + "(an, en, in, on, un), silent final consonants (except c, r, f, l), and the uvular 'r' sound "
                         + "produced at the back of the throat. French has liaison and elision rules where words connect "
@@ -224,7 +224,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "consistent practice with native audio materials.",
                 CATEGORY_LANGUAGE));
 
-        articleRepository.save(buildArticle("art-005", "German Articles Explained",
+        articleRepository.save(buildArticle(ART_ID_5, "German Articles Explained",
                 "German has three grammatical genders: masculine, feminine, and neuter. Each noun belongs to one "
                         + "of these genders, and the definite article changes accordingly: der (masculine), die (feminine), "
                         + "das (neuter). In the nominative case, 'der Mann' (the man), 'die Frau' (the woman), "
@@ -233,7 +233,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         + "Memorizing the article together with each noun is essential for German learners.",
                 CATEGORY_LANGUAGE));
 
-        articleRepository.save(buildArticle("art-006", "Spanish Verb Conjugation",
+        articleRepository.save(buildArticle(ART_ID_6, "Spanish Verb Conjugation",
                 "Spanish verbs are conjugated to reflect person, number, tense, mood, and aspect. "
                         + "There are three verb categories based on infinitive endings: -ar, -er, and -ir. "
                         + "In the present tense, a regular -ar verb like 'hablar' (to speak) conjugates as: "
@@ -315,50 +315,50 @@ public class DatabaseSeeder implements CommandLineRunner {
         log.info("  [4/7] Seeding 12 quizzes...");
 
         // --- art-001: Introduction to Bahasa Indonesia ---
-        quizRepository.save(buildQuiz("quiz-001", "art-001",
+        quizRepository.save(buildQuiz("quiz-001", ART_ID_1,
                 "How is plurality expressed in Bahasa Indonesia?",
                 "[\"By adding -s\",\"By reduplication\",\"By adding -es\",\"By adding numbers\"]", "B"));
-        quizRepository.save(buildQuiz("quiz-002", "art-001",
+        quizRepository.save(buildQuiz("quiz-002", ART_ID_1,
                 "What is the typical word order in Bahasa Indonesia?",
                 "[\"Subject-Object-Verb\",\"Verb-Subject-Object\",\"Subject-Verb-Object\",\"Object-Verb-Subject\"]", "C"));
 
         // --- art-002: English Grammar Fundamentals ---
-        quizRepository.save(buildQuiz("quiz-003", "art-002",
+        quizRepository.save(buildQuiz("quiz-003", ART_ID_2,
                 "How many parts of speech are there in English?",
                 "[\"6\",\"7\",\"8\",\"9\"]", "C"));
-        quizRepository.save(buildQuiz("quiz-004", "art-002",
+        quizRepository.save(buildQuiz("quiz-004", ART_ID_2,
                 "Which article is used before a vowel sound?",
                 "[\"a\",\"an\",\"the\",\"none\"]", "B"));
 
         // --- art-003: Japanese Hiragana Guide ---
-        quizRepository.save(buildQuiz("quiz-005", "art-003",
+        quizRepository.save(buildQuiz("quiz-005", ART_ID_3,
                 "How many basic Hiragana characters are there?",
                 "[\"36\",\"46\",\"56\",\"26\"]", "B"));
-        quizRepository.save(buildQuiz("quiz-006", "art-003",
+        quizRepository.save(buildQuiz("quiz-006", ART_ID_3,
                 "What is the Hiragana character table called?",
                 "[\"Katakana\",\"Kanji\",\"Gojuon\",\"Romaji\"]", "C"));
 
         // --- art-004: French Pronunciation Tips ---
-        quizRepository.save(buildQuiz("quiz-007", "art-004",
+        quizRepository.save(buildQuiz("quiz-007", ART_ID_4,
                 "What are French nasal vowels?",
                 "[\"a, e, i, o, u\",\"an, en, in, on, un\",\"ai, ei, oi, ui, au\",\"ou, eu, au, eau, ai\"]", "B"));
-        quizRepository.save(buildQuiz("quiz-008", "art-004",
+        quizRepository.save(buildQuiz("quiz-008", ART_ID_4,
                 "Which final consonants are typically pronounced in French?",
                 "[\"c, r, f, l\",\"p, t, k, b\",\"m, n, s, z\",\"d, g, v, j\"]", "A"));
 
         // --- art-005: German Articles Explained ---
-        quizRepository.save(buildQuiz("quiz-009", "art-005",
+        quizRepository.save(buildQuiz("quiz-009", ART_ID_5,
                 "What is the definite article for neuter nouns in German nominative case?",
                 "[\"der\",\"die\",\"das\",\"dem\"]", "C"));
-        quizRepository.save(buildQuiz("quiz-010", "art-005",
+        quizRepository.save(buildQuiz("quiz-010", ART_ID_5,
                 "What article do ALL plural nouns use in German nominative?",
                 "[\"der\",\"die\",\"das\",\"den\"]", "B"));
 
         // --- art-006: Spanish Verb Conjugation ---
-        quizRepository.save(buildQuiz("quiz-011", "art-006",
+        quizRepository.save(buildQuiz("quiz-011", ART_ID_6,
                 "What is the 'yo' form of the regular -ar verb 'hablar' in present tense?",
                 "[\"hablas\",\"habla\",\"hablo\",\"hablamos\"]", "C"));
-        quizRepository.save(buildQuiz("quiz-012", "art-006",
+        quizRepository.save(buildQuiz("quiz-012", ART_ID_6,
                 "What auxiliary verb is used for compound tenses in Spanish?",
                 "[\"ser\",\"estar\",\"tener\",\"haber\"]", "D"));
 

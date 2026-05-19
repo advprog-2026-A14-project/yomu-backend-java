@@ -25,6 +25,8 @@ import java.util.Map;
 
 @Service
 public class QuizService {
+    private static final String QUIZ_ALREADY_ATTEMPTED_MESSAGE = "Kuis sudah pernah dikerjakan!";
+
     private final UserAttemptRepository attemptRepository;
     private final QuizRepository quizRepository;
     private final QuizSyncClient quizSyncClient;
@@ -58,7 +60,7 @@ public class QuizService {
         request.setUserId(authenticatedUserId);
 
         if (attemptRepository.existsByUserIdAndKuisId(request.getUserId(), request.getArticleId())) {
-            throw new ConflictException("Kuis sudah pernah dikerjakan!");
+            throw new ConflictException(QUIZ_ALREADY_ATTEMPTED_MESSAGE);
         }
 
         UserAttempt attempt = new UserAttempt();
@@ -69,7 +71,7 @@ public class QuizService {
         try {
             attemptRepository.saveAndFlush(attempt);
         } catch (DataIntegrityViolationException ex) {
-            throw new ConflictException("Kuis sudah pernah dikerjakan!");
+            throw new ConflictException(QUIZ_ALREADY_ATTEMPTED_MESSAGE);
         }
 
         quizSyncClient.sync(request);
@@ -95,7 +97,7 @@ public class QuizService {
         validateSubmitRequest(authenticatedUserId, articleId, request);
 
         if (attemptRepository.existsByUserIdAndKuisId(authenticatedUserId, articleId)) {
-            throw new ConflictException("Kuis sudah pernah dikerjakan!");
+            throw new ConflictException(QUIZ_ALREADY_ATTEMPTED_MESSAGE);
         }
 
         List<Quiz> quizzes = quizRepository.findByArticleId(articleId);
@@ -119,7 +121,7 @@ public class QuizService {
         try {
             attemptRepository.saveAndFlush(attempt);
         } catch (DataIntegrityViolationException ex) {
-            throw new ConflictException("Kuis sudah pernah dikerjakan!");
+            throw new ConflictException(QUIZ_ALREADY_ATTEMPTED_MESSAGE);
         }
 
         QuizSyncRequest syncRequest = new QuizSyncRequest(
