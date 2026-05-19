@@ -64,7 +64,7 @@ class CommentReactionServiceTest {
 
         sampleComment = new Comment();
         sampleComment.setId(commentId);
-        sampleComment.setArticleId(UUID.randomUUID());
+        sampleComment.setArticleId("art-eco-hutan-kota");
         sampleComment.setUserId(userId);
         sampleComment.setContent("Komentar test");
         sampleComment.setCreatedAt(Instant.now());

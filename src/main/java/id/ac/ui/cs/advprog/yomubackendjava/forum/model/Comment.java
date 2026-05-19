@@ -24,7 +24,7 @@ public class Comment {
     private UUID id;
 
     @Column(name = "article_id", nullable = false)
-    private UUID articleId;
+    private String articleId;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;

@@ -58,13 +58,13 @@ public class DatabaseSeeder implements CommandLineRunner {
     private static final UUID GEORGE  = UUID.fromString("b7777777-7777-7777-7777-777777777777");
     private static final UUID HANNAH  = UUID.fromString("b8888888-8888-8888-8888-888888888888");
 
-    // Conceptual UUIDs for articles referenced in comments (Comment.articleId is UUID type)
-    private static final UUID ART_UUID_1 = UUID.fromString("a1000001-0001-0001-0001-000000000001");
-    private static final UUID ART_UUID_2 = UUID.fromString("a1000001-0001-0001-0001-000000000002");
-    private static final UUID ART_UUID_3 = UUID.fromString("a1000001-0001-0001-0001-000000000003");
-    private static final UUID ART_UUID_4 = UUID.fromString("a1000001-0001-0001-0001-000000000004");
-    private static final UUID ART_UUID_5 = UUID.fromString("a1000001-0001-0001-0001-000000000005");
-    private static final UUID ART_UUID_6 = UUID.fromString("a1000001-0001-0001-0001-000000000006");
+    // Fixed String IDs for articles referenced by quizzes and forum comments
+    private static final String ART_ID_1 = "art-001";
+    private static final String ART_ID_2 = "art-002";
+    private static final String ART_ID_3 = "art-003";
+    private static final String ART_ID_4 = "art-004";
+    private static final String ART_ID_5 = "art-005";
+    private static final String ART_ID_6 = "art-006";
 
     // BCrypt placeholder hashes for seeded users
     private static final String HASH_ALICE   = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
@@ -380,7 +380,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     // =======================================================================
     /**
      * Seeds 10 comments: 7 top-level + 3 nested replies.
-     * FK: user_id → users.user_id, article_id (UUID type, conceptually maps to articles),
+     * FK: user_id → users.user_id, article_id → articles.id (String),
      *     parent_comment_id → comments.id (self-referential, nullable).
      *
      * Strategy: save top-level comments first, capture their generated UUIDs,
@@ -393,7 +393,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Comment 1: Alice on art-001 (Indonesian)
         Comment c1 = new Comment();
-        c1.setArticleId(ART_UUID_1);
+        c1.setArticleId(ART_ID_1);
         c1.setUserId(ALICE);
         c1.setContent("Bahasa Indonesia is such a beautiful language! The grammar is simpler than English in many ways. "
                 + "I especially love how phonetic the spelling is — you can pronounce any word just by reading it.");
@@ -401,7 +401,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Comment 2: Charlie on art-001 (Indonesian)
         Comment c2 = new Comment();
-        c2.setArticleId(ART_UUID_1);
+        c2.setArticleId(ART_ID_1);
         c2.setUserId(CHARLIE);
         c2.setContent("I agree! I'm a native speaker and this article explains it well. "
                 + "The reduplication for plurals is actually quite intuitive once you get used to it.");
@@ -409,7 +409,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Comment 3: Diana on art-002 (English)
         Comment c3 = new Comment();
-        c3.setArticleId(ART_UUID_2);
+        c3.setArticleId(ART_ID_2);
         c3.setUserId(DIANA);
         c3.setContent("English grammar can be tricky. The tenses are especially difficult for me! "
                 + "Present perfect vs past simple still confuses me sometimes. Any tips?");
@@ -417,7 +417,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Comment 4: Bob on art-003 (Japanese)
         Comment c4 = new Comment();
-        c4.setArticleId(ART_UUID_3);
+        c4.setArticleId(ART_ID_3);
         c4.setUserId(BOB);
         c4.setContent("Hiragana is the foundation of Japanese. Great guide! "
                 + "I recommend practicing writing each character 50 times until muscle memory kicks in.");
@@ -425,7 +425,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Comment 5: Eric on art-003 (Japanese)
         Comment c5 = new Comment();
-        c5.setArticleId(ART_UUID_3);
+        c5.setArticleId(ART_ID_3);
         c5.setUserId(ERIC);
         c5.setContent("I've been studying Japanese for 3 months. Hiragana was the first thing I learned. "
                 + "It took me about two weeks to memorize all 46 characters. Now I'm working on katakana!");
@@ -433,7 +433,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Comment 6: Fiona on art-004 (French)
         Comment c6 = new Comment();
-        c6.setArticleId(ART_UUID_4);
+        c6.setArticleId(ART_ID_4);
         c6.setUserId(FIONA);
         c6.setContent("French pronunciation is beautiful but the nasal sounds are challenging. "
                 + "I still can't properly distinguish between 'un' and 'in'. Does anyone have good resources?");
@@ -441,7 +441,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Comment 7: George on art-005 (German)
         Comment c7 = new Comment();
-        c7.setArticleId(ART_UUID_5);
+        c7.setArticleId(ART_ID_5);
         c7.setUserId(GEORGE);
         c7.setContent("Der, die, das... German articles are my nightmare! "
                 + "I wish there was a logical pattern to follow. At least plural is always 'die' in nominative!");
@@ -451,7 +451,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Comment 8: Hannah replying to Charlie (c2) on art-001
         Comment c8 = new Comment();
-        c8.setArticleId(ART_UUID_1);
+        c8.setArticleId(ART_ID_1);
         c8.setUserId(HANNAH);
         c8.setParentComment(c2); // self-referential FK → comments.id
         c8.setContent("That's great! I'm learning Indonesian and finding it very approachable. "
@@ -460,7 +460,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Comment 9: Eric replying to Bob (c4) on art-003
         Comment c9 = new Comment();
-        c9.setArticleId(ART_UUID_3);
+        c9.setArticleId(ART_ID_3);
         c9.setUserId(ERIC);
         c9.setParentComment(c4); // self-referential FK → comments.id
         c9.setContent("Thanks for sharing! Do you have tips for learning katakana too? "
@@ -469,7 +469,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Comment 10: Charlie replying to Fiona (c6) on art-004
         Comment c10 = new Comment();
-        c10.setArticleId(ART_UUID_4);
+        c10.setArticleId(ART_ID_4);
         c10.setUserId(CHARLIE);
         c10.setParentComment(c6); // self-referential FK → comments.id
         c10.setContent("The French 'r' sound is especially hard. Practice makes perfect! "
