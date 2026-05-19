@@ -9,12 +9,17 @@
 - Semua key JSON harus `snake_case`.
 
 ## Auth Contract
-- Semua endpoint forum wajib header `Authorization: Bearer <JWT>` kecuali GET comments.
+- Semua endpoint forum wajib header `Authorization: Bearer <JWT>` kecuali `GET comments` dan `GET reactions`.
 - JWT minimal berisi claims:
   - `sub`: `user_id` dalam format UUID string
   - `role`: `PELAJAR` atau `ADMIN`
   - `iat`
   - `exp`
+
+## Article ID Contract
+- `article_id` pada forum mengikuti ID artikel pada modul bacaan.
+- Nilainya berupa string article slug/id, misalnya `art-eco-hutan-kota`.
+- Forum harus return `404` jika `article_id` tidak ditemukan pada modul bacaan.
 
 ---
 
@@ -25,10 +30,11 @@
 - Wajib header `Authorization: Bearer <JWT>`
 - Request body:
   - `content` (required, max 5000 karakter)
-  - `parent_comment_id` (optional, UUID — jika diisi maka ini adalah reply)
+  - `parent_comment_id` (optional, UUID; jika diisi maka ini adalah reply)
 - Behavior:
   - Jika `parent_comment_id` diisi, comment menjadi reply dari comment tersebut
   - Jika `parent_comment_id` null, comment menjadi root comment
+  - Jika `parent_comment_id` berasal dari artikel lain, return `400`
 - Success response (`201`):
 ```json
 {
@@ -36,7 +42,7 @@
   "message": "Komentar berhasil dibuat",
   "data": {
     "id": "<uuid>",
-    "article_id": "<uuid>",
+    "article_id": "<article-slug-or-id>",
     "user_id": "<uuid>",
     "parent_comment_id": null,
     "content": "...",
@@ -47,8 +53,9 @@
 ```
 - Error response:
   - `400` jika `content` kosong atau melebihi 5000 karakter
+  - `400` jika `parent_comment_id` tidak sesuai dengan `article_id`
   - `401` jika tidak ada token / token tidak valid
-  - `404` jika `parent_comment_id` tidak ditemukan
+  - `404` jika `article_id` atau `parent_comment_id` tidak ditemukan
 
 ### Get Comments by Article
 - Method & path: `GET /api/v1/forums/{article_id}/comments`
@@ -64,7 +71,7 @@
   "data": [
     {
       "id": "<uuid>",
-      "article_id": "<uuid>",
+      "article_id": "<article-slug-or-id>",
       "user_id": "<uuid>",
       "parent_comment_id": null,
       "content": "...",
@@ -73,7 +80,7 @@
       "replies": [
         {
           "id": "<uuid>",
-          "article_id": "<uuid>",
+          "article_id": "<article-slug-or-id>",
           "user_id": "<uuid>",
           "parent_comment_id": "<uuid>",
           "content": "...",
@@ -86,6 +93,8 @@
   ]
 }
 ```
+- Error response:
+  - `404` jika `article_id` tidak ditemukan
 
 ### Update Comment
 - Method & path: `PUT /api/v1/forums/comments/{comment_id}`
@@ -101,7 +110,7 @@
   "message": "Komentar berhasil diperbarui",
   "data": {
     "id": "<uuid>",
-    "article_id": "<uuid>",
+    "article_id": "<article-slug-or-id>",
     "user_id": "<uuid>",
     "parent_comment_id": null,
     "content": "...",
@@ -145,8 +154,8 @@
 - Request body:
   - `reaction_type` (required, nilai valid: `UPVOTE`)
 - Behavior:
-  - Jika user belum pernah memberi reaksi dengan `reaction_type` tersebut → tambah reaksi
-  - Jika user sudah memberi reaksi dengan `reaction_type` yang sama → hapus reaksi (toggle)
+  - Jika user belum pernah memberi reaksi dengan `reaction_type` tersebut -> tambah reaksi
+  - Jika user sudah memberi reaksi dengan `reaction_type` yang sama -> hapus reaksi (toggle)
   - Satu user hanya bisa memberi satu reaksi per `reaction_type` per comment
 - Success response (`200`):
 ```json
@@ -176,12 +185,9 @@
   "message": "Reaksi berhasil diambil",
   "data": {
     "comment_id": "<uuid>",
-    "reactions": [
-      {
-        "reaction_type": "UPVOTE",
-        "count": 5
-      }
-    ]
+    "reaction_type": "UPVOTE",
+    "reacted": false,
+    "reaction_count": 5
   }
 }
 ```

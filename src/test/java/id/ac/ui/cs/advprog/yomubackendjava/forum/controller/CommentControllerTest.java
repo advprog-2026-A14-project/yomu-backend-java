@@ -64,7 +64,7 @@ class CommentControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private final UUID articleId = UUID.randomUUID();
+    private final String articleId = "art-eco-hutan-kota";
     private final UUID userId = UUID.randomUUID();
     private final UUID commentId = UUID.randomUUID();
 

@@ -1,11 +1,16 @@
 package id.ac.ui.cs.advprog.yomubackendjava.forum.service;
 
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.Article;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service.ArticleService;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.NotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CommentResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CreateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.CommentNotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.UnauthorizedCommentAccessException;
+import id.ac.ui.cs.advprog.yomubackendjava.integration.rust.RustLeagueClient;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.Comment;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.repository.CommentRepository;
@@ -41,17 +46,23 @@ class CommentServiceTest {
     @Mock
     private ICommentReactionService reactionService;
 
+    @Mock
+    private ArticleService articleService;
+
+    @Mock
+    private RustLeagueClient rustLeagueClient;
+
     @InjectMocks
     private CommentService commentService;
 
-    private UUID articleId;
+    private String articleId;
     private UUID userId;
     private UUID commentId;
     private Comment sampleComment;
 
     @BeforeEach
     void setUp() {
-        articleId = UUID.randomUUID();
+        articleId = "art-eco-hutan-kota";
         userId = UUID.randomUUID();
         commentId = UUID.randomUUID();
 
@@ -62,6 +73,11 @@ class CommentServiceTest {
         sampleComment.setContent("Ini komentar pertama");
         sampleComment.setCreatedAt(Instant.now());
         sampleComment.setReplies(new ArrayList<>());
+
+        Article article = new Article();
+        article.setId(articleId);
+        article.setTitle("Artikel forum");
+        when(articleService.findById(articleId)).thenReturn(article);
     }
 
     @AfterEach
@@ -104,6 +120,19 @@ class CommentServiceTest {
     }
 
     @Test
+    void createComment_articleNotFound_shouldThrowNotFound() {
+        authenticateAs(userId, Role.PELAJAR);
+        String missingArticleId = "art-tidak-ada";
+        CreateCommentRequest request = new CreateCommentRequest(null, "Komentar baru");
+
+        when(articleService.findById(missingArticleId))
+                .thenThrow(new NotFoundException("Artikel tidak ditemukan"));
+
+        assertThrows(NotFoundException.class,
+                () -> commentService.createComment(missingArticleId, request));
+    }
+
+    @Test
     void createReply_shouldSetParentComment() {
         authenticateAs(userId, Role.PELAJAR);
 
@@ -142,6 +171,22 @@ class CommentServiceTest {
     }
 
     @Test
+    void createReply_parentFromDifferentArticle_shouldThrowBadRequest() {
+        authenticateAs(userId, Role.PELAJAR);
+
+        Comment parentFromDifferentArticle = new Comment();
+        parentFromDifferentArticle.setId(commentId);
+        parentFromDifferentArticle.setArticleId("art-sejarah-surat-laut");
+
+        CreateCommentRequest request = new CreateCommentRequest(commentId, "Reply silang artikel");
+
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(parentFromDifferentArticle));
+
+        assertThrows(BadRequestException.class,
+                () -> commentService.createComment(articleId, request));
+    }
+
+    @Test
     void getCommentsByArticle_shouldReturnRootComments() {
         when(commentRepository.findByArticleIdAndParentCommentIsNullOrderByCreatedAtDesc(articleId))
                 .thenReturn(List.of(sampleComment));
@@ -161,6 +206,17 @@ class CommentServiceTest {
         List<CommentResponse> responses = commentService.getCommentsByArticle(articleId);
 
         assertTrue(responses.isEmpty());
+    }
+
+    @Test
+    void getCommentsByArticle_articleNotFound_shouldThrowNotFound() {
+        String missingArticleId = "art-tidak-ada";
+
+        when(articleService.findById(missingArticleId))
+                .thenThrow(new NotFoundException("Artikel tidak ditemukan"));
+
+        assertThrows(NotFoundException.class,
+                () -> commentService.getCommentsByArticle(missingArticleId));
     }
 
     @Test

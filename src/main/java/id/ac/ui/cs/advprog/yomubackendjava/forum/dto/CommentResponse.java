@@ -21,7 +21,7 @@ public class CommentResponse {
     private UUID id;
 
     @JsonProperty("article_id")
-    private UUID articleId;
+    private String articleId;
 
     @JsonProperty("user_id")
     private UUID userId;

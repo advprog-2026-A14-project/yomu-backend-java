@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.forum.service;
 
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service.ArticleService;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CommentResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CreateCommentRequest;
@@ -27,20 +29,24 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final ICommentReactionService reactionService;
     private final RustLeagueClient rustLeagueClient;
+    private final ArticleService articleService;
 
     public CommentService(
             CommentRepository commentRepository,
             @Lazy ICommentReactionService reactionService,
-            RustLeagueClient rustLeagueClient
+            RustLeagueClient rustLeagueClient,
+            ArticleService articleService
     ) {
         this.commentRepository = commentRepository;
         this.reactionService = reactionService;
         this.rustLeagueClient = rustLeagueClient;
+        this.articleService = articleService;
     }
 
-    public CommentResponse createComment(UUID articleId, CreateCommentRequest request) {
+    public CommentResponse createComment(String articleId, CreateCommentRequest request) {
         UUID userId = CurrentUser.userId()
                 .orElseThrow(() -> new UnauthorizedException(LOGIN_REQUIRED_MESSAGE));
+        ensureArticleExists(articleId);
 
         Comment comment = new Comment();
         comment.setArticleId(articleId);
@@ -49,6 +55,7 @@ public class CommentService {
 
         if (request.getParentCommentId() != null) {
             Comment parent = findCommentOrThrow(request.getParentCommentId());
+            validateParentCommentBelongsToArticle(parent, articleId);
             comment.setParentComment(parent);
         }
 
@@ -56,7 +63,9 @@ public class CommentService {
         return toResponse(saved);
     }
 
-    public List<CommentResponse> getCommentsByArticle(UUID articleId) {
+    public List<CommentResponse> getCommentsByArticle(String articleId) {
+        ensureArticleExists(articleId);
+
         List<Comment> rootComments = commentRepository
                 .findByArticleIdAndParentCommentIsNullOrderByCreatedAtDesc(articleId);
 
@@ -97,6 +106,16 @@ public class CommentService {
     private void validateOwnership(Comment comment, UUID userId) {
         if (!comment.getUserId().equals(userId)) {
             throw new UnauthorizedCommentAccessException();
+        }
+    }
+
+    private void ensureArticleExists(String articleId) {
+        articleService.findById(articleId);
+    }
+
+    private void validateParentCommentBelongsToArticle(Comment parent, String articleId) {
+        if (!articleId.equals(parent.getArticleId())) {
+            throw new BadRequestException("Parent comment tidak sesuai dengan artikel tujuan");
         }
     }
 
