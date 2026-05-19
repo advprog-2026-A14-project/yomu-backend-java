@@ -17,15 +17,19 @@ import java.util.UUID;
 @Service
 public class JwtService {
     private static final int MIN_SECRET_LENGTH = 32;
+    private static final int MAX_TOKEN_LENGTH = 4096;
     private static final String ROLE_CLAIM = "role";
 
-    private final String secret;
     private final long ttlSeconds;
+    private final String issuer;
+    private final String audience;
     private final SecretKey signingKey;
 
     public JwtService(JwtProperties jwtProperties) {
-        this.secret = jwtProperties.secret();
+        String secret = jwtProperties.secret();
         this.ttlSeconds = jwtProperties.ttlSeconds();
+        this.issuer = requireConfig(jwtProperties.issuer(), "JWT issuer must not be blank");
+        this.audience = requireConfig(jwtProperties.audience(), "JWT audience must not be blank");
         if (secret == null || secret.length() < MIN_SECRET_LENGTH) {
             throw new IllegalStateException("JWT secret must be at least 32 characters");
         }
@@ -38,6 +42,8 @@ public class JwtService {
 
         return Jwts.builder()
                 .subject(userId.toString())
+                .issuer(issuer)
+                .audience().add(audience).and()
                 .claim(ROLE_CLAIM, role.name())
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiresAt))
@@ -46,9 +52,15 @@ public class JwtService {
     }
 
     public JwtClaims parseAndValidate(String token) {
+        if (token == null || token.isBlank() || token.length() > MAX_TOKEN_LENGTH) {
+            throw new UnauthorizedException("Invalid or expired token");
+        }
+
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(signingKey)
+                    .requireIssuer(issuer)
+                    .requireAudience(audience)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
@@ -70,12 +82,15 @@ public class JwtService {
         }
     }
 
-    public String getSecret() {
-        return secret;
-    }
-
     public long getTtlSeconds() {
         return ttlSeconds;
+    }
+
+    private String requireConfig(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(message);
+        }
+        return value;
     }
 
     public record JwtClaims(UUID userId, Role role, Instant issuedAt, Instant expiresAt) {

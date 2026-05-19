@@ -1,16 +1,67 @@
 services:
+  # PostgreSQL Database
   postgres:
-    image: postgres:18-alpine
-    container_name: yomu_postgres
-    restart: always
+    image: postgres:18
+    container_name: yomu-java-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: yomu_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-yomu_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-yomu_password}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # Spring Boot Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yomu-java-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-yomu_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-${GOOGLE_CLIENT_ID:-}}
+      JWT_SECRET: ${JWT_SECRET}
+      RUST_ENGINE_BASE_URL: ${RUST_ENGINE_BASE_URL:-http://host.docker.internal:8081}
+      RUST_INTEGRATION_TRANSPORT: ${RUST_INTEGRATION_TRANSPORT:-grpc}
+      RUST_ENGINE_GRPC_HOST: ${RUST_ENGINE_GRPC_HOST:-host.docker.internal}
+      RUST_ENGINE_GRPC_PORT: ${RUST_ENGINE_GRPC_PORT:-9090}
+      RUST_ENGINE_GRPC_NEGOTIATION_TYPE: ${RUST_ENGINE_GRPC_NEGOTIATION_TYPE:-plaintext}
+      RUST_GRPC_DEADLINE_MS: ${RUST_GRPC_DEADLINE_MS:-3000}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
+      JWT_ISSUER: ${JWT_ISSUER:-yomu-backend-java}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-yomu-clients}
+      OUTBOX_SCHEDULER_ENABLED: ${OUTBOX_SCHEDULER_ENABLED:-true}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-false}
+      SERVER_PORT: "8080"
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-10}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-2}
+      DB_POOL_CONN_TIMEOUT: ${DB_POOL_CONN_TIMEOUT:-30000}
+      DB_POOL_IDLE_TIMEOUT: ${DB_POOL_IDLE_TIMEOUT:-600000}
+      DB_POOL_MAX_LIFETIME: ${DB_POOL_MAX_LIFETIME:-1800000}
+      DB_POOL_LEAK_DETECTION: ${DB_POOL_LEAK_DETECTION:-30000}
+      DB_POOL_KEEPALIVE: ${DB_POOL_KEEPALIVE:-300000}
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+
+networks:
+  default:
+    name: yomu-java-network

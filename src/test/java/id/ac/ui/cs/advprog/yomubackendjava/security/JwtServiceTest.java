@@ -11,10 +11,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class JwtServiceTest {
     private static final String TEST_SECRET = "01234567890123456789012345678901";
+    private static final String TEST_ISSUER = "yomu-backend-java";
+    private static final String TEST_AUDIENCE = "yomu-clients";
 
     @Test
     void generateThenParseShouldKeepSubjectAndRole() {
-        JwtService jwtService = new JwtService(new JwtProperties(TEST_SECRET, 3600));
+        JwtService jwtService = jwtService(3600);
         UUID userId = UUID.randomUUID();
 
         String token = jwtService.generateToken(userId, Role.PELAJAR);
@@ -26,7 +28,7 @@ class JwtServiceTest {
 
     @Test
     void generatedTokenShouldHaveExpAfterIat() {
-        JwtService jwtService = new JwtService(new JwtProperties(TEST_SECRET, 3600));
+        JwtService jwtService = jwtService(3600);
 
         JwtService.JwtClaims claims = jwtService.parseAndValidate(
                 jwtService.generateToken(UUID.randomUUID(), Role.ADMIN)
@@ -37,10 +39,32 @@ class JwtServiceTest {
 
     @Test
     void expiredTokenShouldBeRejected() {
-        JwtService jwtService = new JwtService(new JwtProperties(TEST_SECRET, -1));
+        JwtService jwtService = jwtService(-1);
 
         String token = jwtService.generateToken(UUID.randomUUID(), Role.PELAJAR);
 
         assertThrows(UnauthorizedException.class, () -> jwtService.parseAndValidate(token));
+    }
+
+    @Test
+    void tokenWithWrongIssuerShouldBeRejected() {
+        JwtService issuerA = new JwtService(new JwtProperties(TEST_SECRET, 3600, "issuer-a", "yomu-clients"));
+        JwtService issuerB = new JwtService(new JwtProperties(TEST_SECRET, 3600, "issuer-b", "yomu-clients"));
+
+        String token = issuerA.generateToken(UUID.randomUUID(), Role.PELAJAR);
+
+        assertThrows(UnauthorizedException.class, () -> issuerB.parseAndValidate(token));
+    }
+
+    @Test
+    void oversizedTokenShouldBeRejectedBeforeParsing() {
+        JwtService jwtService = jwtService(3600);
+        String oversizedToken = "a".repeat(4097);
+
+        assertThrows(UnauthorizedException.class, () -> jwtService.parseAndValidate(oversizedToken));
+    }
+
+    private JwtService jwtService(long ttlSeconds) {
+        return new JwtService(new JwtProperties(TEST_SECRET, ttlSeconds, TEST_ISSUER, TEST_AUDIENCE));
     }
 }

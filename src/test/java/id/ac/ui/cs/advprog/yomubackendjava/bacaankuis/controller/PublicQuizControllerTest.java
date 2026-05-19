@@ -4,6 +4,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service.QuizService;
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtAuthFilter;
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSubmitRequest;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -42,13 +46,17 @@ class PublicQuizControllerTest {
 
     @Test
     void testSubmitQuizPayloadUsesSnakeCase() throws Exception {
-        String token = jwtService.generateToken(UUID.randomUUID(), Role.PELAJAR);
+        UUID authenticatedUserId = UUID.randomUUID();
+        String token = jwtService.generateToken(authenticatedUserId, Role.PELAJAR);
 
         String json = """
         {
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "score": 100,
-            "accuracy": 90.0
+            "answers": [
+                {
+                    "quiz_id": "quiz-news-001-1",
+                    "answer": "Mengurangi kemacetan"
+                }
+            ]
         }
         """;
 
@@ -58,15 +66,20 @@ class PublicQuizControllerTest {
                         .content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
+
+        verify(quizService).submitAndSync(eq(authenticatedUserId), eq("art-123"), any(QuizSubmitRequest.class));
     }
 
     @Test
     void submitQuiz_whenUnauthenticated_returnsUnauthorized() throws Exception {
         String json = """
         {
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "score": 100,
-            "accuracy": 90.0
+            "answers": [
+                {
+                    "quiz_id": "quiz-news-001-1",
+                    "answer": "Mengurangi kemacetan"
+                }
+            ]
         }
         """;
 

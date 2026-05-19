@@ -1,0 +1,72 @@
+name: Security Audit
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  pull_request:
+    branches:
+      - main
+      - staging
+  schedule:
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  owasp:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+    env:
+      DEPENDENCY_CHECK_DATA_DIRECTORY: ${{ runner.temp }}/dependency-check-data
+
+    steps:
+      - name: Check out the Git repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java toolchain
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Clean stale Dependency-Check data
+        run: rm -rf "$DEPENDENCY_CHECK_DATA_DIRECTORY"
+
+      - name: Cache OWASP Dependency-Check data
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DEPENDENCY_CHECK_DATA_DIRECTORY }}
+          key: dependency-check-data-${{ runner.os }}-${{ hashFiles('build.gradle.kts', 'settings.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}-${{ github.run_number }}
+          restore-keys: |
+            dependency-check-data-${{ runner.os }}-${{ hashFiles('build.gradle.kts', 'settings.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}-
+            dependency-check-data-${{ runner.os }}-
+
+      - name: Run OWASP Dependency-Check
+        continue-on-error: true
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: ./gradlew dependencyCheckAnalyze --no-daemon -Dorg.owasp.dependencycheck.data.directory="$DEPENDENCY_CHECK_DATA_DIRECTORY"
+
+      - name: Upload OWASP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check-report
+          path: build/reports/dependency-check-report.html
+          retention-days: 30
+
+      - name: Upload SARIF to GitHub Security tab
+        if: success() && hashFiles('build/reports/dependency-check-report.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: build/reports/dependency-check-report.sarif
+          wait-for-processing: true

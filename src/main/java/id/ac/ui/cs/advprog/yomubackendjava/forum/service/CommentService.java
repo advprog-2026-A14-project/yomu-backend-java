@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.yomubackendjava.forum.service;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service.ArticleService;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CommentResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CreateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
@@ -16,6 +17,8 @@ import id.ac.ui.cs.advprog.yomubackendjava.security.CurrentUser;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +26,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class CommentService {
+
+    private static final Logger log = LoggerFactory.getLogger(CommentService.class);
 
     private static final String LOGIN_REQUIRED_MESSAGE = "Login diperlukan";
 
@@ -51,7 +56,7 @@ public class CommentService {
         Comment comment = new Comment();
         comment.setArticleId(articleId);
         comment.setUserId(userId);
-        comment.setContent(request.getContent());
+        comment.setContent(SecuritySanitizer.html(request.getContent()));
 
         if (request.getParentCommentId() != null) {
             Comment parent = findCommentOrThrow(request.getParentCommentId());
@@ -81,7 +86,7 @@ public class CommentService {
         Comment comment = findCommentOrThrow(commentId);
         validateOwnership(comment, userId);
 
-        comment.setContent(request.getContent());
+        comment.setContent(SecuritySanitizer.html(request.getContent()));
         Comment updated = commentRepository.save(comment);
         return toResponse(updated);
     }
@@ -132,11 +137,11 @@ public class CommentService {
             RustLeagueClient.UserTierResponse tierResponse =
                     rustLeagueClient.getUserTier(comment.getUserId());
             if (tierResponse != null) {
-                clanName = tierResponse.clanName();
-                tier = tierResponse.tier();
+                clanName = SecuritySanitizer.html(tierResponse.clanName());
+                tier = SecuritySanitizer.html(tierResponse.tier());
             }
         } catch (Exception e) {
-            // Fault tolerance: Rust down, comment tetap tampil tanpa tier
+            log.debug("Tier fetch failed for comment user: {}", e.getMessage());
         }
 
         return CommentResponse.builder()
@@ -169,11 +174,11 @@ public class CommentService {
             RustLeagueClient.UserTierResponse tierResponse =
                     rustLeagueClient.getUserTier(comment.getUserId());
             if (tierResponse != null) {
-                clanName = tierResponse.clanName();
-                tier = tierResponse.tier();
+                clanName = SecuritySanitizer.html(tierResponse.clanName());
+                tier = SecuritySanitizer.html(tierResponse.tier());
             }
         } catch (Exception e) {
-            // Fault tolerance: Rust down, comment tetap tampil tanpa tier
+            log.debug("Tier fetch failed for comment user: {}", e.getMessage());
         }
 
         return CommentResponse.builder()

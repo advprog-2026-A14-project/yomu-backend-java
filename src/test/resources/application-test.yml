@@ -12,3 +12,7 @@ spring:
 jwt:
   secret: 01234567890123456789012345678901
   ttl-seconds: 86400
+
+outbox:
+  scheduler:
+    enabled: false

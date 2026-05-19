@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.yomubackendjava.auth;
 
 import id.ac.ui.cs.advprog.yomubackendjava.integration.rust.RustEngineClient;
 import id.ac.ui.cs.advprog.yomubackendjava.outbox.OutboxService;
+import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +16,7 @@ public class AuthUserSyncService {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthUserSyncService.class);
     private static final int RUST_SYNC_CREATED_STATUS = 201;
     private static final int RUST_SYNC_CONFLICT_STATUS = 409;
+    private static final String REDACTED_EXTERNAL_BODY = "<redacted>";
 
     private final RustEngineClient rustEngineClient;
     private final OutboxService outboxService;
@@ -53,7 +55,7 @@ public class AuthUserSyncService {
                     return SyncAttemptResult.ok();
                 }
 
-                lastError = "status=" + syncResult.statusCode() + " body=" + syncResult.responseBody();
+                lastError = buildStatusError(syncResult);
                 if (!isRetryableStatus(syncResult.statusCode()) || attempt == maxAttempts) {
                     return SyncAttemptResult.failure(lastError);
                 }
@@ -65,7 +67,7 @@ public class AuthUserSyncService {
                         syncResult.statusCode()
                 );
             } catch (RestClientException ex) {
-                lastError = messageOrDefault(ex.getMessage(), "rust sync request gagal");
+                lastError = sanitizeErrorMessage(messageOrDefault(ex.getMessage(), "rust sync request gagal"));
                 if (attempt == maxAttempts) {
                     return SyncAttemptResult.failure(lastError);
                 }
@@ -77,7 +79,7 @@ public class AuthUserSyncService {
                         ex.getClass().getSimpleName()
                 );
             } catch (RuntimeException ex) {
-                lastError = messageOrDefault(ex.getMessage(), "rust sync runtime gagal");
+                lastError = sanitizeErrorMessage(messageOrDefault(ex.getMessage(), "rust sync runtime gagal"));
                 return SyncAttemptResult.failure(lastError);
             }
         }
@@ -92,8 +94,21 @@ public class AuthUserSyncService {
         return statusCode == 408 || statusCode == 429 || statusCode >= 500;
     }
 
+    private String buildStatusError(RustEngineClient.SyncResult syncResult) {
+        String responseBody = syncResult.responseBody();
+        String message = "status=" + syncResult.statusCode();
+        if (responseBody != null && !responseBody.isBlank()) {
+            message += " body=" + REDACTED_EXTERNAL_BODY;
+        }
+        return sanitizeErrorMessage(message);
+    }
+
     private String messageOrDefault(String message, String defaultMessage) {
         return message == null || message.isBlank() ? defaultMessage : message;
+    }
+
+    private String sanitizeErrorMessage(String message) {
+        return SecuritySanitizer.safeErrorMessage(message, "rust sync gagal");
     }
 
     public record SyncAttemptResult(boolean succeeded, String errorMessage) {
