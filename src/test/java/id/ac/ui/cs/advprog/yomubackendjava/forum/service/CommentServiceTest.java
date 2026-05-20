@@ -223,6 +223,23 @@ class CommentServiceTest {
     }
 
     @Test
+    void getCommentsByArticle_shouldReturnReactionCountsByType() {
+        when(commentRepository.findByArticleIdAndParentCommentIsNullOrderByCreatedAtDesc(articleId))
+                .thenReturn(List.of(sampleComment));
+        when(reactionService.getReactionCount(commentId, ReactionType.UPVOTE)).thenReturn(2);
+        when(reactionService.getReactionCount(commentId, ReactionType.DOWNVOTE)).thenReturn(1);
+        when(reactionService.getReactionCount(commentId, ReactionType.EMOJI)).thenReturn(3);
+
+        List<CommentResponse> responses = commentService.getCommentsByArticle(articleId);
+
+        CommentResponse response = responses.getFirst();
+        assertEquals(2, response.getReactionCount());
+        assertEquals(2, response.getUpvoteCount());
+        assertEquals(1, response.getDownvoteCount());
+        assertEquals(3, response.getEmojiCount());
+    }
+
+    @Test
     void getCommentsByArticle_noComments_shouldReturnEmptyList() {
         when(commentRepository.findByArticleIdAndParentCommentIsNullOrderByCreatedAtDesc(articleId))
                 .thenReturn(List.of());

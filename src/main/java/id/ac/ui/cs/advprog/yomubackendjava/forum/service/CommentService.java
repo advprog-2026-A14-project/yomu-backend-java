@@ -125,36 +125,7 @@ public class CommentService {
     }
 
     private CommentResponse toResponse(Comment comment) {
-        UUID parentId = comment.getParentComment() != null
-                ? comment.getParentComment().getId()
-                : null;
-
-        int reactionCount = reactionService.getReactionCount(comment.getId(), ReactionType.UPVOTE);
-
-        String clanName = null;
-        String tier = null;
-        try {
-            RustLeagueClient.UserTierResponse tierResponse =
-                    rustLeagueClient.getUserTier(comment.getUserId());
-            if (tierResponse != null) {
-                clanName = SecuritySanitizer.html(tierResponse.clanName());
-                tier = SecuritySanitizer.html(tierResponse.tier());
-            }
-        } catch (Exception e) {
-            log.debug("Tier fetch failed for comment user: {}", e.getMessage());
-        }
-
-        return CommentResponse.builder()
-                .id(comment.getId())
-                .articleId(comment.getArticleId())
-                .userId(comment.getUserId())
-                .parentCommentId(parentId)
-                .content(comment.getContent())
-                .createdAt(comment.getCreatedAt())
-                .reactionCount(reactionCount)
-                .clanName(clanName)
-                .tier(tier)
-                .build();
+        return buildResponse(comment, null);
     }
 
     private CommentResponse toResponseWithReplies(Comment comment) {
@@ -162,11 +133,17 @@ public class CommentService {
                 .map(this::toResponseWithReplies)
                 .collect(Collectors.toList());
 
+        return buildResponse(comment, replyResponses);
+    }
+
+    private CommentResponse buildResponse(Comment comment, List<CommentResponse> replies) {
         UUID parentId = comment.getParentComment() != null
                 ? comment.getParentComment().getId()
                 : null;
 
-        int reactionCount = reactionService.getReactionCount(comment.getId(), ReactionType.UPVOTE);
+        int upvoteCount = reactionService.getReactionCount(comment.getId(), ReactionType.UPVOTE);
+        int downvoteCount = reactionService.getReactionCount(comment.getId(), ReactionType.DOWNVOTE);
+        int emojiCount = reactionService.getReactionCount(comment.getId(), ReactionType.EMOJI);
 
         String clanName = null;
         String tier = null;
@@ -188,8 +165,11 @@ public class CommentService {
                 .parentCommentId(parentId)
                 .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
-                .reactionCount(reactionCount)
-                .replies(replyResponses)
+                .reactionCount(upvoteCount)
+                .upvoteCount(upvoteCount)
+                .downvoteCount(downvoteCount)
+                .emojiCount(emojiCount)
+                .replies(replies)
                 .clanName(clanName)
                 .tier(tier)
                 .build();

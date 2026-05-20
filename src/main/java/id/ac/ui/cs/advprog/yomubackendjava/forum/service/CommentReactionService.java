@@ -53,6 +53,7 @@ public class CommentReactionService implements ICommentReactionService {
             strategy.onReactionRemoved(commentId, userId);
             reacted = false;
         } else {
+            removeOppositeVoteIfPresent(commentId, userId, reactionType);
             reactionRepository.save(new CommentReaction(null, commentId, userId, reactionType));
             strategy.onReactionAdded(commentId, userId);
             reacted = true;
@@ -77,5 +78,27 @@ public class CommentReactionService implements ICommentReactionService {
     private void assertCommentExists(UUID commentId) {
         commentRepository.findById(commentId)
                 .orElseThrow(() -> new CommentNotFoundException(commentId));
+    }
+
+    private void removeOppositeVoteIfPresent(UUID commentId, UUID userId, ReactionType reactionType) {
+        oppositeVoteOf(reactionType)
+                .flatMap(oppositeType -> reactionRepository
+                        .findByCommentIdAndUserIdAndReactionTypeForUpdate(commentId, userId, oppositeType)
+                        .map(existing -> new OppositeVote(oppositeType, existing)))
+                .ifPresent(oppositeVote -> {
+                    reactionRepository.delete(oppositeVote.reaction());
+                    strategyFactory.resolve(oppositeVote.type()).onReactionRemoved(commentId, userId);
+                });
+    }
+
+    private Optional<ReactionType> oppositeVoteOf(ReactionType reactionType) {
+        return switch (reactionType) {
+            case UPVOTE -> Optional.of(ReactionType.DOWNVOTE);
+            case DOWNVOTE -> Optional.of(ReactionType.UPVOTE);
+            case EMOJI -> Optional.empty();
+        };
+    }
+
+    private record OppositeVote(ReactionType type, CommentReaction reaction) {
     }
 }

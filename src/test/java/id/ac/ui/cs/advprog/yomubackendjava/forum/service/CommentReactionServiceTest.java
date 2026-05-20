@@ -48,6 +48,9 @@ class CommentReactionServiceTest {
     @Mock
     private ReactionStrategy reactionStrategy;
 
+    @Mock
+    private ReactionStrategy oppositeReactionStrategy;
+
     @InjectMocks
     private CommentReactionService reactionService;
 
@@ -142,6 +145,36 @@ class CommentReactionServiceTest {
 
         assertTrue(response.isReacted());
         assertEquals(ReactionType.DOWNVOTE, response.getReactionType());
+        verify(reactionRepository).save(any(CommentReaction.class));
+        verify(reactionStrategy).onReactionAdded(commentId, userId);
+    }
+
+    @Test
+    void toggleReaction_upvote_shouldRemoveExistingDownvote() {
+        authenticateAs(userId, Role.PELAJAR);
+
+        CommentReaction existingDownvote = new CommentReaction(
+                UUID.randomUUID(), commentId, userId, ReactionType.DOWNVOTE);
+
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(sampleComment));
+        when(strategyFactory.resolve(ReactionType.UPVOTE)).thenReturn(reactionStrategy);
+        when(strategyFactory.resolve(ReactionType.DOWNVOTE)).thenReturn(oppositeReactionStrategy);
+        when(reactionRepository.findByCommentIdAndUserIdAndReactionTypeForUpdate(
+                commentId, userId, ReactionType.UPVOTE))
+                .thenReturn(Optional.empty());
+        when(reactionRepository.findByCommentIdAndUserIdAndReactionTypeForUpdate(
+                commentId, userId, ReactionType.DOWNVOTE))
+                .thenReturn(Optional.of(existingDownvote));
+        when(reactionRepository.countByCommentIdAndReactionType(commentId, ReactionType.UPVOTE))
+                .thenReturn(1);
+
+        ReactionResponse response = reactionService.toggleReaction(commentId, ReactionType.UPVOTE);
+
+        assertTrue(response.isReacted());
+        assertEquals(ReactionType.UPVOTE, response.getReactionType());
+        assertEquals(1, response.getReactionCount());
+        verify(reactionRepository).delete(existingDownvote);
+        verify(oppositeReactionStrategy).onReactionRemoved(commentId, userId);
         verify(reactionRepository).save(any(CommentReaction.class));
         verify(reactionStrategy).onReactionAdded(commentId, userId);
     }
