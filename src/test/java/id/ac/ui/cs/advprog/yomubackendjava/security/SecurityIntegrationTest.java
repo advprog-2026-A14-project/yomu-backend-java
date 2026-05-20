@@ -3,6 +3,9 @@ package id.ac.ui.cs.advprog.yomubackendjava.security;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import id.ac.ui.cs.advprog.yomubackendjava.YomuBackendJavaApplication;
+import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
+import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
+import java.time.Instant;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -43,6 +47,14 @@ class SecurityIntegrationTest {
     @Autowired
     private JwtService jwtService;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+    }
+
     @Test
     void requestWithoutTokenShouldReturnWrapped401() throws Exception {
         mockMvc.perform(get(SECURE_PING_PATH))
@@ -69,6 +81,24 @@ class SecurityIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
                 .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
+    }
+
+    @Test
+    void tokenForDeletedUserShouldReturn403BeforeController() throws Exception {
+        UserEntity user = new UserEntity();
+        user.setUsername("security_deleted");
+        user.setDisplayName("Security Deleted");
+        user.setEmail("security.deleted@example.com");
+        user.setRole(Role.PELAJAR);
+        user.setPasswordHash("hash");
+        user.setDeletedAt(Instant.now());
+        UserEntity saved = userRepository.saveAndFlush(user);
+        String token = jwtService.generateToken(saved.getUserId(), saved.getRole());
+
+        mockMvc.perform(get(SECURE_PING_PATH)
+                        .header(AUTHORIZATION_HEADER, BEARER_PREFIX + token))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false));
     }
 
     @Test

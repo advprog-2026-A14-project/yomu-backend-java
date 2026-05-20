@@ -25,15 +25,18 @@ public class GoogleUserProvisioningService {
     private final UserRepository userRepository;
     private final UsernameGenerator usernameGenerator;
     private final AuthUserSyncService authUserSyncService;
+    private final IdentifierNormalizer identifierNormalizer;
 
     public GoogleUserProvisioningService(
             UserRepository userRepository,
             UsernameGenerator usernameGenerator,
-            AuthUserSyncService authUserSyncService
+            AuthUserSyncService authUserSyncService,
+            IdentifierNormalizer identifierNormalizer
     ) {
         this.userRepository = userRepository;
         this.usernameGenerator = usernameGenerator;
         this.authUserSyncService = authUserSyncService;
+        this.identifierNormalizer = identifierNormalizer;
     }
 
     public ProvisionedGoogleUser findOrProvisionUser(GoogleLoginCommand command, GoogleProfile profile) {
@@ -65,8 +68,8 @@ public class GoogleUserProvisioningService {
     }
 
     private UserEntity buildNewGoogleUser(GoogleLoginCommand command, GoogleProfile profile, String googleSub) {
-        String requestUsername = normalize(command.username());
-        String emailFromGoogle = normalize(profile.email());
+        String requestUsername = identifierNormalizer.username(command.username());
+        String emailFromGoogle = identifierNormalizer.email(profile.email());
         validateGoogleUserUniqueness(requestUsername, emailFromGoogle);
 
         String username = requestUsername != null

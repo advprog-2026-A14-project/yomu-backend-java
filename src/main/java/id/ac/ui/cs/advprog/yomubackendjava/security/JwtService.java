@@ -19,6 +19,7 @@ public class JwtService {
     private static final int MIN_SECRET_LENGTH = 32;
     private static final int MAX_TOKEN_LENGTH = 4096;
     private static final String ROLE_CLAIM = "role";
+    private static final String TOKEN_VERSION_CLAIM = "token_version";
 
     private final long ttlSeconds;
     private final String issuer;
@@ -45,6 +46,23 @@ public class JwtService {
                 .issuer(issuer)
                 .audience().add(audience).and()
                 .claim(ROLE_CLAIM, role.name())
+                .claim(TOKEN_VERSION_CLAIM, 0)
+                .issuedAt(Date.from(issuedAt))
+                .expiration(Date.from(expiresAt))
+                .signWith(signingKey)
+                .compact();
+    }
+
+    public String generateToken(UUID userId, Role role, int tokenVersion) {
+        Instant issuedAt = Instant.now();
+        Instant expiresAt = issuedAt.plusSeconds(ttlSeconds);
+
+        return Jwts.builder()
+                .subject(userId.toString())
+                .issuer(issuer)
+                .audience().add(audience).and()
+                .claim(ROLE_CLAIM, role.name())
+                .claim(TOKEN_VERSION_CLAIM, tokenVersion)
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiresAt))
                 .signWith(signingKey)
@@ -67,6 +85,7 @@ public class JwtService {
 
             String subject = claims.getSubject();
             String roleValue = claims.get(ROLE_CLAIM, String.class);
+            Integer tokenVersion = claims.get(TOKEN_VERSION_CLAIM, Integer.class);
             Date issuedAtDate = claims.getIssuedAt();
             Date expirationDate = claims.getExpiration();
 
@@ -76,7 +95,7 @@ public class JwtService {
 
             UUID userId = UUID.fromString(subject);
             Role role = Role.valueOf(roleValue);
-            return new JwtClaims(userId, role, issuedAtDate.toInstant(), expirationDate.toInstant());
+            return new JwtClaims(userId, role, issuedAtDate.toInstant(), expirationDate.toInstant(), tokenVersion == null ? 0 : tokenVersion);
         } catch (IllegalArgumentException | JwtException ex) {
             throw new UnauthorizedException("Invalid or expired token");
         }
@@ -93,6 +112,9 @@ public class JwtService {
         return value;
     }
 
-    public record JwtClaims(UUID userId, Role role, Instant issuedAt, Instant expiresAt) {
+    public record JwtClaims(UUID userId, Role role, Instant issuedAt, Instant expiresAt, int tokenVersion) {
+        public JwtClaims(UUID userId, Role role, Instant issuedAt, Instant expiresAt) {
+            this(userId, role, issuedAt, expiresAt, 0);
+        }
     }
 }
