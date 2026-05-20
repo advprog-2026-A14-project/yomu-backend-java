@@ -39,6 +39,7 @@ public class GrpcQuizSyncClient implements QuizSyncClient {
                     .syncQuizHistory(grpcRequest);
         } catch (StatusRuntimeException ex) {
             LOGGER.warn("Rust quiz gRPC sync failed status={}", ex.getStatus().getCode());
+            throw ex;
         }
     }
 }

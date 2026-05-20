@@ -25,6 +25,6 @@ public class AuthResponseFactory {
     }
 
     private String createAccessToken(UserEntity user) {
-        return jwtService.generateToken(user.getUserId(), user.getRole());
+        return jwtService.generateToken(user.getUserId(), user.getRole(), user.getTokenVersion());
     }
 }

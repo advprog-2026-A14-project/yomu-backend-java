@@ -98,6 +98,25 @@ class RegisterControllerTest {
     }
 
     @Test
+    void registerWithWeakPasswordShouldReturn400() throws Exception {
+        String requestJson = """
+                {
+                  "username": "weak_password_user",
+                  "display_name": "Weak Password User",
+                  "password": "aaaaaaaa",
+                  "email": "weak.password@example.com"
+                }
+                """;
+
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
+    }
+
+    @Test
     void registerWithDuplicateUsernameShouldReturn409() throws Exception {
         String firstRequestJson = """
                 {

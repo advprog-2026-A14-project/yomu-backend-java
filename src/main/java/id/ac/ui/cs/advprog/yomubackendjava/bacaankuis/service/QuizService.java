@@ -8,6 +8,8 @@ import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.QuizRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.UserAttemptRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
+import id.ac.ui.cs.advprog.yomubackendjava.outbox.OutboxService;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizAnswerRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSubmitRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.Quiz;
@@ -30,14 +32,17 @@ public class QuizService {
     private final UserAttemptRepository attemptRepository;
     private final QuizRepository quizRepository;
     private final QuizSyncClient quizSyncClient;
+    private final OutboxService outboxService;
 
     public QuizService(
             UserAttemptRepository attemptRepository,
             QuizRepository quizRepository,
-            QuizSyncClient quizSyncClient) {
+            QuizSyncClient quizSyncClient,
+            OutboxService outboxService) {
         this.attemptRepository = attemptRepository;
         this.quizRepository = quizRepository;
         this.quizSyncClient = quizSyncClient;
+        this.outboxService = outboxService;
     }
 
     public List<QuizQuestionResponse> getAvailableQuizzes(UUID userId, String articleId) {
@@ -74,7 +79,7 @@ public class QuizService {
             throw new ConflictException(QUIZ_ALREADY_ATTEMPTED_MESSAGE);
         }
 
-        quizSyncClient.sync(request);
+        syncQuizCompletion(request);
     }
 
     private void validateRequest(QuizSyncRequest request) {
@@ -131,7 +136,7 @@ public class QuizService {
                 percentage
         );
 
-        quizSyncClient.sync(syncRequest);
+        syncQuizCompletion(syncRequest);
 
         return new QuizSubmitResult(
                 percentage,
@@ -179,5 +184,17 @@ public class QuizService {
         }
 
         return quiz.getAnswer().trim().equalsIgnoreCase(submittedAnswer.trim());
+    }
+
+    private void syncQuizCompletion(QuizSyncRequest request) {
+        try {
+            quizSyncClient.sync(request);
+        } catch (RuntimeException ex) {
+            outboxService.recordQuizSyncFailure(request, syncErrorMessage(ex));
+        }
+    }
+
+    private String syncErrorMessage(RuntimeException ex) {
+        return SecuritySanitizer.safeErrorMessage(ex.getMessage(), "rust quiz sync gagal");
     }
 }

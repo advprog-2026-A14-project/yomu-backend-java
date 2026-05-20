@@ -17,6 +17,18 @@ class ReactionStrategyTest {
     }
 
     @Test
+    void downvoteStrategy_getReactionType_shouldReturnDownvote() {
+        DownvoteReactionStrategy strategy = new DownvoteReactionStrategy();
+        assertEquals(ReactionType.DOWNVOTE, strategy.getReactionType());
+    }
+
+    @Test
+    void emojiStrategy_getReactionType_shouldReturnEmoji() {
+        EmojiReactionStrategy strategy = new EmojiReactionStrategy();
+        assertEquals(ReactionType.EMOJI, strategy.getReactionType());
+    }
+
+    @Test
     void upvoteStrategy_onReactionAdded_shouldNotThrow() {
         UpvoteReactionStrategy strategy = new UpvoteReactionStrategy();
         assertDoesNotThrow(() -> strategy.onReactionAdded(UUID.randomUUID(), UUID.randomUUID()));
@@ -31,8 +43,16 @@ class ReactionStrategyTest {
     @Test
     void strategyFactory_resolve_validType_shouldReturnStrategy() {
         UpvoteReactionStrategy upvoteStrategy = new UpvoteReactionStrategy();
-        ReactionStrategyFactory factory = new ReactionStrategyFactory(List.of(upvoteStrategy));
+        DownvoteReactionStrategy downvoteStrategy = new DownvoteReactionStrategy();
+        EmojiReactionStrategy emojiStrategy = new EmojiReactionStrategy();
+        ReactionStrategyFactory factory = new ReactionStrategyFactory(List.of(
+                upvoteStrategy,
+                downvoteStrategy,
+                emojiStrategy
+        ));
         assertNotNull(factory.resolve(ReactionType.UPVOTE));
+        assertNotNull(factory.resolve(ReactionType.DOWNVOTE));
+        assertNotNull(factory.resolve(ReactionType.EMOJI));
     }
 
     @Test

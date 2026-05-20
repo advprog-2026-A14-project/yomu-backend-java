@@ -55,6 +55,9 @@ public class UserEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(name = "token_version")
+    private Integer tokenVersion = 0;
+
     @PrePersist
     public void onCreate() {
         Instant now = EntityTime.now();
@@ -155,5 +158,17 @@ public class UserEntity {
 
     public void setDeletedAt(Instant deletedAt) {
         this.deletedAt = deletedAt;
+    }
+
+    public int getTokenVersion() {
+        return tokenVersion == null ? 0 : tokenVersion;
+    }
+
+    public void setTokenVersion(int tokenVersion) {
+        this.tokenVersion = tokenVersion;
+    }
+
+    public void incrementTokenVersion() {
+        this.tokenVersion = getTokenVersion() + 1;
     }
 }
