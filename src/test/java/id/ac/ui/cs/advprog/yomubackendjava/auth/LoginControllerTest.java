@@ -79,6 +79,23 @@ class LoginControllerTest {
     }
 
     @Test
+    void loginSuccessByUppercaseEmailWithSpacesShouldReturn200() throws Exception {
+        saveActiveUser("login_case", "login.case@example.com", "+628121111117", true, false);
+
+        mockMvc.perform(post(LOGIN_PATH)
+                        .contentType(APPLICATION_JSON)
+                .content("""
+                                {
+                                  "identifier": "  LOGIN.CASE@EXAMPLE.COM  ",
+                                  "password": "rahasia123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true))
+                .andExpect(jsonPath("$.data.user.email").value("login.case@example.com"));
+    }
+
+    @Test
     void loginSuccessByPhoneShouldReturn200() throws Exception {
         saveActiveUser("login_phone", "login.phone@example.com", "+628121111113", true, false);
 

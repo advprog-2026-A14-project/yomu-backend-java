@@ -43,6 +43,9 @@ public class AuthService {
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
     private final AuthUserSyncService authUserSyncService;
     private final GoogleUserProvisioningService googleUserProvisioningService;
+    private final PasswordPolicy passwordPolicy;
+    private final IdentifierNormalizer identifierNormalizer;
+    private final AuthEventLogger authEventLogger;
 
     public AuthService(
             UserRepository userRepository,
@@ -51,7 +54,10 @@ public class AuthService {
             IdentifierResolver identifierResolver,
             GoogleIdTokenVerifier googleIdTokenVerifier,
             AuthUserSyncService authUserSyncService,
-            GoogleUserProvisioningService googleUserProvisioningService
+            GoogleUserProvisioningService googleUserProvisioningService,
+            PasswordPolicy passwordPolicy,
+            IdentifierNormalizer identifierNormalizer,
+            AuthEventLogger authEventLogger
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -60,14 +66,18 @@ public class AuthService {
         this.googleIdTokenVerifier = googleIdTokenVerifier;
         this.authUserSyncService = authUserSyncService;
         this.googleUserProvisioningService = googleUserProvisioningService;
+        this.passwordPolicy = passwordPolicy;
+        this.identifierNormalizer = identifierNormalizer;
+        this.authEventLogger = authEventLogger;
     }
 
     public ApiResponse<AuthResponseData> registerLocal(RegisterCommand command) {
-        String username = normalize(command.username());
+        String username = identifierNormalizer.username(command.username());
         String displayName = SecuritySanitizer.html(command.displayName());
-        String email = normalize(command.email());
-        String phoneNumber = normalize(command.phoneNumber());
+        String email = identifierNormalizer.email(command.email());
+        String phoneNumber = identifierNormalizer.phoneNumber(command.phoneNumber());
 
+        passwordPolicy.validateNewPassword(command.password());
         validateRegisterIdentifiers(email, phoneNumber);
         validateUniqueness(username, email, phoneNumber);
 
@@ -87,27 +97,32 @@ public class AuthService {
         }
 
         authUserSyncService.syncNewUser(savedUser.getUserId());
+        authEventLogger.registerSuccess(savedUser.getUserId());
 
         AuthResponseData responseData = authResponseFactory.createLocalAuthResponse(savedUser);
         return ApiResponse.success(REGISTER_SUCCESS_MESSAGE, responseData);
     }
 
     public ApiResponse<AuthResponseData> loginLocal(LoginCommand command) {
-        String identifier = normalize(command.identifier());
+        String identifier = identifierNormalizer.loginIdentifier(command.identifier());
         if (identifier == null) {
+            authEventLogger.loginFailed("INVALID_CREDENTIAL");
             throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
         }
 
         IdentifierResolver.ResolvedIdentifier resolvedIdentifier = identifierResolver.resolve(identifier);
         UserEntity user = assertActiveUserForLogin(resolvedIdentifier);
         if (user.getPasswordHash() == null) {
+            authEventLogger.loginFailed("SSO_ONLY");
             throw new UnauthorizedException(LOGIN_SSO_ONLY_MESSAGE);
         }
         if (!passwordEncoder.matches(command.password(), user.getPasswordHash())) {
+            authEventLogger.loginFailed("INVALID_CREDENTIAL");
             throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
         }
 
         AuthResponseData responseData = authResponseFactory.createLocalAuthResponse(user);
+        authEventLogger.loginSuccess(user.getUserId());
         return ApiResponse.success(LOGIN_SUCCESS_MESSAGE, responseData);
     }
 
@@ -140,6 +155,7 @@ public class AuthService {
         try {
             return googleIdTokenVerifier.verify(idToken);
         } catch (RuntimeException ex) {
+            authEventLogger.googleLoginFailed("INVALID_GOOGLE_TOKEN");
             throw new BadRequestException(GOOGLE_TOKEN_INVALID_MESSAGE);
         }
     }
@@ -173,12 +189,10 @@ public class AuthService {
 
         Optional<UserEntity> anyUser = findAnyUser(resolvedIdentifier);
         if (anyUser.isPresent() && anyUser.get().getDeletedAt() != null) {
+            authEventLogger.loginFailed("USER_DELETED");
             throw new ForbiddenException(LOGIN_DELETED_MESSAGE);
         }
+        authEventLogger.loginFailed("INVALID_CREDENTIAL");
         throw new UnauthorizedException(LOGIN_INVALID_CREDENTIALS_MESSAGE);
-    }
-
-    private String normalize(String value) {
-        return SecuritySanitizer.normalize(value);
     }
 }
