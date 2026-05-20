@@ -37,6 +37,15 @@ public class CommentResponse {
     @JsonProperty("reaction_count")
     private int reactionCount;
 
+    @JsonProperty("upvote_count")
+    private int upvoteCount;
+
+    @JsonProperty("downvote_count")
+    private int downvoteCount;
+
+    @JsonProperty("emoji_count")
+    private int emojiCount;
+
     private List<CommentResponse> replies;
 
     @JsonProperty("clan_name")
