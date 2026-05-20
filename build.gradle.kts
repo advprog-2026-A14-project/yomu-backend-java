@@ -102,6 +102,22 @@ dependencies {
     compileOnly("jakarta.annotation:jakarta.annotation-api:1.3.5")
     implementation("io.grpc:grpc-services")
     testImplementation("org.springframework.grpc:spring-grpc-test")
+
+    // --- Observability ---
+    // Micrometer + Prometheus metrics (Spring Boot Actuator already present)
+    implementation("io.micrometer:micrometer-core")
+    implementation("io.micrometer:micrometer-registry-prometheus")
+    // OpenTelemetry tracing bridge (Micrometer → OTEL)
+    implementation("io.micrometer:micrometer-tracing-bridge-otel")
+    // OTEL SDK + OTLP exporter
+    implementation("io.opentelemetry:opentelemetry-sdk:1.44.1")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.44.1")
+    implementation("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.44.1")
+    // Sentry error tracking
+    // Sentry not compatible with Spring Boot 4 yet - skipping until upstream releases support
+    //     implementation("io.sentry:sentry-spring-boot-4:8.41.0")
+    // JSON structured logging
+    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 }
 
 sourceSets {
