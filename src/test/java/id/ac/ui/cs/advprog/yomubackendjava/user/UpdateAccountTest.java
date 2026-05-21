@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -67,6 +68,23 @@ class UpdateAccountTest {
     }
 
     @Test
+    void updateDisplayNameShouldEscapeHtml() throws Exception {
+        UserEntity user = saveUser("upd_xss", "Display Lama", "upd.xss@example.com", null, RAW_PASSWORD);
+        String token = tokenFor(user);
+
+        mockMvc.perform(patch(ME_PATH)
+                        .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + token)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "display_name": "<script>alert(1)</script>"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.display_name").value("&lt;script&gt;alert(1)&lt;/script&gt;"));
+    }
+
+    @Test
     void updateUsernameConflictShouldReturn409() throws Exception {
         saveUser("username_exist", "Exist", "exist@example.com", null, RAW_PASSWORD);
         UserEntity user = saveUser("username_target", "Target", "target@example.com", null, RAW_PASSWORD);
@@ -100,6 +118,46 @@ class UpdateAccountTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
                 .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
+    }
+
+    @Test
+    void updatePasswordWithSamePasswordShouldReturn400() throws Exception {
+        UserEntity user = saveUser("pass_same", "Pass Same", "pass.same@example.com", null, RAW_PASSWORD);
+
+        mockMvc.perform(patch(ME_PASSWORD_PATH)
+                        .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + tokenFor(user))
+                        .contentType(APPLICATION_JSON)
+                .content("""
+                                {
+                                  "current_password": "secret123",
+                                  "new_password": "secret123"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
+                .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
+    }
+
+    @Test
+    void oldTokenShouldBeRejectedAfterPasswordChange() throws Exception {
+        UserEntity user = saveUser("pass_version", "Pass Version", "pass.version@example.com", null, RAW_PASSWORD);
+        String oldToken = tokenFor(user);
+
+        mockMvc.perform(patch(ME_PASSWORD_PATH)
+                        .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + oldToken)
+                        .contentType(APPLICATION_JSON)
+                .content("""
+                                {
+                                  "current_password": "secret123",
+                                  "new_password": "newsecure123"
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(ME_PATH)
+                        .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + oldToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false));
     }
 
     @Test

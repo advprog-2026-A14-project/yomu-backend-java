@@ -1,5 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.admin;
 
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.integration.QuizSyncClient;
 import id.ac.ui.cs.advprog.yomubackendjava.integration.rust.RustEngineClient;
 import id.ac.ui.cs.advprog.yomubackendjava.outbox.domain.FailedSyncEventEntity;
 import id.ac.ui.cs.advprog.yomubackendjava.outbox.domain.SyncEventStatus;
@@ -24,6 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,9 +64,13 @@ class AdminOutboxTest {
     @Autowired
     private RustEngineClient rustEngineClient;
 
+    @Autowired
+    private QuizSyncClient quizSyncClient;
+
     @BeforeEach
     void setUp() {
         Mockito.reset(rustEngineClient);
+        Mockito.reset(quizSyncClient);
         failedSyncEventRepository.deleteAll();
     }
 
@@ -178,6 +186,62 @@ class AdminOutboxTest {
         verify(rustEngineClient, times(2)).syncUser(userId);
     }
 
+    @Test
+    void retryQuizSyncSuccessShouldMarkDone() throws Exception {
+        UUID userId = UUID.randomUUID();
+        FailedSyncEventEntity event = failedSyncEventRepository.saveAndFlush(buildQuizSyncEvent(
+                userId,
+                "article-123",
+                90.0,
+                80.0,
+                SyncEventStatus.FAILED,
+                0
+        ));
+
+        mockMvc.perform(post(ADMIN_RETRY_PATH)
+                        .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
+                        .contentType(APPLICATION_JSON)
+                        .content(EVENT_IDS_JSON.formatted(event.getEventId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
+
+        FailedSyncEventEntity updated = failedSyncEventRepository.findById(event.getEventId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(SyncEventStatus.DONE);
+        verify(quizSyncClient).sync(argThat(request ->
+                userId.equals(request.getUserId())
+                        && "article-123".equals(request.getArticleId())
+                        && request.getScore() == 90.0
+                        && request.getAccuracy() == 80.0
+        ));
+    }
+
+    @Test
+    void retryQuizSyncFailureShouldIncrementRetryCount() throws Exception {
+        UUID userId = UUID.randomUUID();
+        FailedSyncEventEntity event = failedSyncEventRepository.saveAndFlush(buildQuizSyncEvent(
+                userId,
+                "article-123",
+                90.0,
+                80.0,
+                SyncEventStatus.FAILED,
+                1
+        ));
+        Mockito.doThrow(new RuntimeException("rust quiz timeout"))
+                .when(quizSyncClient).sync(any(QuizSyncRequest.class));
+
+        mockMvc.perform(post(ADMIN_RETRY_PATH)
+                        .header(JwtAuthFilter.AUTHORIZATION_HEADER, bearerToken(Role.ADMIN))
+                        .contentType(APPLICATION_JSON)
+                        .content(EVENT_IDS_JSON.formatted(event.getEventId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
+
+        FailedSyncEventEntity updated = failedSyncEventRepository.findById(event.getEventId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(SyncEventStatus.FAILED);
+        assertThat(updated.getRetryCount()).isEqualTo(2);
+        assertThat(updated.getLastError()).isEqualTo("rust quiz timeout");
+    }
+
     private String bearerToken(Role role) {
         return JwtAuthFilter.BEARER_PREFIX + jwtService.generateToken(UUID.randomUUID(), role);
     }
@@ -191,12 +255,36 @@ class AdminOutboxTest {
         return event;
     }
 
+    private FailedSyncEventEntity buildQuizSyncEvent(
+            UUID userId,
+            String articleId,
+            double score,
+            double accuracy,
+            SyncEventStatus status,
+            int retryCount
+    ) {
+        FailedSyncEventEntity event = new FailedSyncEventEntity();
+        event.setEventType(SyncEventType.QUIZ_SYNC);
+        event.setPayloadJson("""
+                {"user_id":"%s","article_id":"%s","score":%s,"accuracy":%s}
+                """.formatted(userId, articleId, score, accuracy));
+        event.setStatus(status);
+        event.setRetryCount(retryCount);
+        return event;
+    }
+
     @TestConfiguration
     static class MockBeans {
         @Bean
         @Primary
         RustEngineClient rustEngineClient() {
             return Mockito.mock(RustEngineClient.class);
+        }
+
+        @Bean
+        @Primary
+        QuizSyncClient quizSyncClient() {
+            return Mockito.mock(QuizSyncClient.class);
         }
     }
 }

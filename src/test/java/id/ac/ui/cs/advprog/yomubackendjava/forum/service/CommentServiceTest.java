@@ -1,11 +1,16 @@
 package id.ac.ui.cs.advprog.yomubackendjava.forum.service;
 
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.Article;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service.ArticleService;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.NotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CommentResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CreateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.CommentNotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.UnauthorizedCommentAccessException;
+import id.ac.ui.cs.advprog.yomubackendjava.integration.rust.RustLeagueClient;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.Comment;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.repository.CommentRepository;
@@ -15,6 +20,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -41,17 +47,23 @@ class CommentServiceTest {
     @Mock
     private ICommentReactionService reactionService;
 
+    @Mock
+    private ArticleService articleService;
+
+    @Mock
+    private RustLeagueClient rustLeagueClient;
+
     @InjectMocks
     private CommentService commentService;
 
-    private UUID articleId;
+    private String articleId;
     private UUID userId;
     private UUID commentId;
     private Comment sampleComment;
 
     @BeforeEach
     void setUp() {
-        articleId = UUID.randomUUID();
+        articleId = "art-eco-hutan-kota";
         userId = UUID.randomUUID();
         commentId = UUID.randomUUID();
 
@@ -62,6 +74,11 @@ class CommentServiceTest {
         sampleComment.setContent("Ini komentar pertama");
         sampleComment.setCreatedAt(Instant.now());
         sampleComment.setReplies(new ArrayList<>());
+
+        Article article = new Article();
+        article.setId(articleId);
+        article.setTitle("Artikel forum");
+        lenient().when(articleService.findById(articleId)).thenReturn(article);
     }
 
     @AfterEach
@@ -96,11 +113,47 @@ class CommentServiceTest {
     }
 
     @Test
+    void createComment_shouldEscapeHtmlContentBeforeSaving() {
+        authenticateAs(userId, Role.PELAJAR);
+        CreateCommentRequest request = new CreateCommentRequest(null, "<img src=x onerror=alert(1)>");
+
+        when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> {
+            Comment saved = invocation.getArgument(0);
+            saved.setId(commentId);
+            saved.setCreatedAt(Instant.now());
+            saved.setReplies(new ArrayList<>());
+            return saved;
+        });
+        when(reactionService.getReactionCount(commentId, ReactionType.UPVOTE)).thenReturn(0);
+
+        CommentResponse response = commentService.createComment(articleId, request);
+
+        assertEquals("&lt;img src=x onerror=alert(1)&gt;", response.getContent());
+
+        ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
+        verify(commentRepository).save(captor.capture());
+        assertEquals("&lt;img src=x onerror=alert(1)&gt;", captor.getValue().getContent());
+    }
+
+    @Test
     void createComment_noAuth_shouldThrowUnauthorized() {
         CreateCommentRequest request = new CreateCommentRequest(null, "Komentar baru");
 
         assertThrows(UnauthorizedException.class,
                 () -> commentService.createComment(articleId, request));
+    }
+
+    @Test
+    void createComment_articleNotFound_shouldThrowNotFound() {
+        authenticateAs(userId, Role.PELAJAR);
+        String missingArticleId = "art-tidak-ada";
+        CreateCommentRequest request = new CreateCommentRequest(null, "Komentar baru");
+
+        when(articleService.findById(missingArticleId))
+                .thenThrow(new NotFoundException("Artikel tidak ditemukan"));
+
+        assertThrows(NotFoundException.class,
+                () -> commentService.createComment(missingArticleId, request));
     }
 
     @Test
@@ -142,6 +195,22 @@ class CommentServiceTest {
     }
 
     @Test
+    void createReply_parentFromDifferentArticle_shouldThrowBadRequest() {
+        authenticateAs(userId, Role.PELAJAR);
+
+        Comment parentFromDifferentArticle = new Comment();
+        parentFromDifferentArticle.setId(commentId);
+        parentFromDifferentArticle.setArticleId("art-sejarah-surat-laut");
+
+        CreateCommentRequest request = new CreateCommentRequest(commentId, "Reply silang artikel");
+
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(parentFromDifferentArticle));
+
+        assertThrows(BadRequestException.class,
+                () -> commentService.createComment(articleId, request));
+    }
+
+    @Test
     void getCommentsByArticle_shouldReturnRootComments() {
         when(commentRepository.findByArticleIdAndParentCommentIsNullOrderByCreatedAtDesc(articleId))
                 .thenReturn(List.of(sampleComment));
@@ -154,6 +223,23 @@ class CommentServiceTest {
     }
 
     @Test
+    void getCommentsByArticle_shouldReturnReactionCountsByType() {
+        when(commentRepository.findByArticleIdAndParentCommentIsNullOrderByCreatedAtDesc(articleId))
+                .thenReturn(List.of(sampleComment));
+        when(reactionService.getReactionCount(commentId, ReactionType.UPVOTE)).thenReturn(2);
+        when(reactionService.getReactionCount(commentId, ReactionType.DOWNVOTE)).thenReturn(1);
+        when(reactionService.getReactionCount(commentId, ReactionType.EMOJI)).thenReturn(3);
+
+        List<CommentResponse> responses = commentService.getCommentsByArticle(articleId);
+
+        CommentResponse response = responses.getFirst();
+        assertEquals(2, response.getReactionCount());
+        assertEquals(2, response.getUpvoteCount());
+        assertEquals(1, response.getDownvoteCount());
+        assertEquals(3, response.getEmojiCount());
+    }
+
+    @Test
     void getCommentsByArticle_noComments_shouldReturnEmptyList() {
         when(commentRepository.findByArticleIdAndParentCommentIsNullOrderByCreatedAtDesc(articleId))
                 .thenReturn(List.of());
@@ -161,6 +247,17 @@ class CommentServiceTest {
         List<CommentResponse> responses = commentService.getCommentsByArticle(articleId);
 
         assertTrue(responses.isEmpty());
+    }
+
+    @Test
+    void getCommentsByArticle_articleNotFound_shouldThrowNotFound() {
+        String missingArticleId = "art-tidak-ada";
+
+        when(articleService.findById(missingArticleId))
+                .thenThrow(new NotFoundException("Artikel tidak ditemukan"));
+
+        assertThrows(NotFoundException.class,
+                () -> commentService.getCommentsByArticle(missingArticleId));
     }
 
     @Test

@@ -21,7 +21,7 @@ public class CommentResponse {
     private UUID id;
 
     @JsonProperty("article_id")
-    private UUID articleId;
+    private String articleId;
 
     @JsonProperty("user_id")
     private UUID userId;
@@ -36,6 +36,15 @@ public class CommentResponse {
 
     @JsonProperty("reaction_count")
     private int reactionCount;
+
+    @JsonProperty("upvote_count")
+    private int upvoteCount;
+
+    @JsonProperty("downvote_count")
+    private int downvoteCount;
+
+    @JsonProperty("emoji_count")
+    private int emojiCount;
 
     private List<CommentResponse> replies;
 

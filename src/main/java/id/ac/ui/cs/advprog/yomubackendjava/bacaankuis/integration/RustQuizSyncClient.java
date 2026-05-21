@@ -2,35 +2,44 @@ package id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.integration;
 
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
+@ConditionalOnProperty(name = "rust.integration.transport", havingValue = "rest")
 public class RustQuizSyncClient implements QuizSyncClient {
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final String syncUrl;
-    private final String apiKey;
+    private static final Logger LOGGER = LoggerFactory.getLogger(RustQuizSyncClient.class);
+    private static final String SYNC_ENDPOINT = "/api/internal/quiz-history/sync";
+    private static final String API_KEY_HEADER = "x-api-key";
+
+    private final RestClient restClient;
 
     public RustQuizSyncClient(
             @Value("${rust.engine.base-url}") String rustEngineBaseUrl,
             @Value("${internal.api.key}") String apiKey) {
-        this.syncUrl = rustEngineBaseUrl + "/api/internal/quiz-history/sync";
-        this.apiKey = apiKey;
+        this.restClient = RestClient.builder()
+                .baseUrl(rustEngineBaseUrl)
+                .defaultHeader(API_KEY_HEADER, apiKey)
+                .build();
     }
 
     @Override
     public void sync(QuizSyncRequest request) {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("x-api-key", apiKey);
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<QuizSyncRequest> entity = new HttpEntity<>(request, headers);
-            restTemplate.postForEntity(syncUrl, entity, String.class);
+            restClient.post()
+                    .uri(SYNC_ENDPOINT)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (RestClientException e) {
-            System.err.println("Rust quiz sync failed: " + e.getMessage());
+            LOGGER.warn("Rust quiz REST sync failed: {}", e.getMessage());
+            throw e;
         }
     }
 }

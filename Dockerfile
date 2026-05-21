@@ -31,8 +31,8 @@ FROM eclipse-temurin:21-jre-alpine AS runtime
 
 WORKDIR /app
 
-# Install health-check tool and netcat (for entrypoint connectivity check)
-RUN apk add --no-cache wget netcat-openbsd curl
+# Install health-check tool, netcat, and ca-certificates (for OTEL/GRPC TLS)
+RUN apk add --no-cache wget netcat-openbsd curl ca-certificates
 
 # Create non-root user
 RUN addgroup -g 1000 appgroup && \
@@ -40,6 +40,15 @@ RUN addgroup -g 1000 appgroup && \
 
 # Copy the built fat JAR
 COPY --from=builder /app/build/libs/*.jar app.jar
+
+# Download OTEL Java agent (for auto-instrumentation: traces, metrics, span context)
+# Placed in /app/otel/ so entrypoint can reference it via JAVA_TOOL_OPTIONS
+RUN mkdir -p /app/otel && \
+  (wget -q "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.44.1/opentelemetry-javaagent.jar" \
+    -O /app/otel/opentelemetry-javaagent.jar || \
+  (echo "WARN: OTEL agent download failed, disabling auto-instrumentation" && \
+   rm -f /app/otel/opentelemetry-javaagent.jar)) && \
+  chown -R appuser:appgroup /app/otel
 
 # Set ownership
 RUN chown -R appuser:appgroup /app
@@ -62,6 +71,6 @@ USER appuser
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider "http://localhost:${SERVER_PORT:-8080}/actuator/health/readiness" || exit 1
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

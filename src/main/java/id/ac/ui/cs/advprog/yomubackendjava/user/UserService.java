@@ -1,12 +1,16 @@
 package id.ac.ui.cs.advprog.yomubackendjava.user;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.AuthEventLogger;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.IdentifierNormalizer;
+import id.ac.ui.cs.advprog.yomubackendjava.auth.PasswordPolicy;
 import id.ac.ui.cs.advprog.yomubackendjava.auth.dto.UserDto;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
 import id.ac.ui.cs.advprog.yomubackendjava.security.CurrentUser;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
 import id.ac.ui.cs.advprog.yomubackendjava.user.dto.UpdateIdentifiersRequest;
@@ -40,6 +44,7 @@ public class UserService {
     private static final String EMAIL_USED_MESSAGE = "email sudah digunakan";
     private static final String PHONE_USED_MESSAGE = "phone_number sudah digunakan";
     private static final String CURRENT_PASSWORD_INVALID_MESSAGE = "current_password salah";
+    private static final String NEW_PASSWORD_SAME_MESSAGE = "new_password tidak boleh sama dengan current_password";
     private static final String IDS_REQUIRED_MESSAGE = "ids wajib diisi";
     private static final String IDS_MAX_MESSAGE = "maksimal 100 ids";
     private static final String IDS_INVALID_UUID_MESSAGE = "ids harus UUID valid";
@@ -49,11 +54,24 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicy passwordPolicy;
+    private final IdentifierNormalizer identifierNormalizer;
+    private final AuthEventLogger authEventLogger;
 
-    public UserService(UserRepository userRepository, UserMapper userMapper, PasswordEncoder passwordEncoder) {
+    public UserService(
+            UserRepository userRepository,
+            UserMapper userMapper,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicy passwordPolicy,
+            IdentifierNormalizer identifierNormalizer,
+            AuthEventLogger authEventLogger
+    ) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
+        this.passwordPolicy = passwordPolicy;
+        this.identifierNormalizer = identifierNormalizer;
+        this.authEventLogger = authEventLogger;
     }
 
     public ApiResponse<UserDto> me() {
@@ -61,8 +79,8 @@ public class UserService {
     }
 
     public ApiResponse<UserDto> updateProfile(UpdateProfileRequest request) {
-        String username = normalize(request.getUsername());
-        String displayName = normalize(request.getDisplayName());
+        String username = identifierNormalizer.username(request.getUsername());
+        String displayName = SecuritySanitizer.html(request.getDisplayName());
         validateProfilePayload(username, displayName);
 
         UserEntity user = assertActiveUser();
@@ -75,21 +93,27 @@ public class UserService {
 
     public ApiResponse<Void> updatePassword(UpdatePasswordRequest request) {
         UserEntity user = assertActiveUser();
+        passwordPolicy.validateNewPassword(request.getNewPassword());
         if (user.getPasswordHash() != null) {
             String currentPassword = normalize(request.getCurrentPassword());
             if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
                 throw new UnauthorizedException(CURRENT_PASSWORD_INVALID_MESSAGE);
             }
+            if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+                throw new BadRequestException(NEW_PASSWORD_SAME_MESSAGE);
+            }
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.incrementTokenVersion();
         userRepository.saveAndFlush(user);
+        authEventLogger.passwordChanged(user.getUserId());
         return ApiResponse.success(PASSWORD_UPDATED_SUCCESS_MESSAGE);
     }
 
     public ApiResponse<UserDto> updateLoginIdentifiers(UpdateIdentifiersRequest request) {
-        String email = normalize(request.getEmail());
-        String phoneNumber = normalize(request.getPhoneNumber());
+        String email = identifierNormalizer.email(request.getEmail());
+        String phoneNumber = identifierNormalizer.phoneNumber(request.getPhoneNumber());
         validateIdentifiersPayload(email, phoneNumber);
 
         UserEntity user = assertActiveUser();
@@ -237,11 +261,7 @@ public class UserService {
     }
 
     private String normalize(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return SecuritySanitizer.normalize(value);
     }
 
     public record UserBatchResponseData(

@@ -4,7 +4,7 @@ plugins {
     pmd
     id("org.springframework.boot") version "4.0.2"
     id("io.spring.dependency-management") version "1.1.7"
-    id("org.owasp.dependencycheck") version "12.1.3"
+    id("org.owasp.dependencycheck") version "12.2.2"
     id("com.google.protobuf") version "0.9.6"
 }
 
@@ -41,10 +41,30 @@ tasks.withType<Pmd>().configureEach {
 
 dependencyCheck {
     failBuildOnCVSS = 9.0f
+    formats = listOf("HTML", "SARIF")
+    scanConfigurations = listOf("runtimeClasspath")
+    skipConfigurations = listOf("testRuntimeClasspath", "testCompileClasspath")
+    skipTestGroups = true
+    data {
+        directory = providers
+            .systemProperty("org.owasp.dependencycheck.data.directory")
+            .orElse(providers.environmentVariable("DEPENDENCY_CHECK_DATA_DIRECTORY"))
+            .orElse(file(".gradle/dependency-check-data").absolutePath)
+            .get()
+    }
+    nvd {
+        apiKey = System.getenv("NVD_API_KEY").orEmpty()
+    }
     analyzers {
         assemblyEnabled = false
         nugetconfEnabled = false
         msbuildEnabled = false
+        nodeAudit {
+            enabled.set(false)
+        }
+        ossIndex {
+            enabled.set(false)
+        }
     }
 }
 
@@ -82,6 +102,22 @@ dependencies {
     compileOnly("jakarta.annotation:jakarta.annotation-api:1.3.5")
     implementation("io.grpc:grpc-services")
     testImplementation("org.springframework.grpc:spring-grpc-test")
+
+    // --- Observability ---
+    // Micrometer + Prometheus metrics (Spring Boot Actuator already present)
+    implementation("io.micrometer:micrometer-core")
+    implementation("io.micrometer:micrometer-registry-prometheus")
+    // OpenTelemetry tracing bridge (Micrometer → OTEL)
+    implementation("io.micrometer:micrometer-tracing-bridge-otel")
+    // OTEL SDK + OTLP exporter
+    implementation("io.opentelemetry:opentelemetry-sdk:1.44.1")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp:1.44.1")
+    implementation("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.44.1")
+    // Sentry error tracking
+    // Sentry not compatible with Spring Boot 4 yet - skipping until upstream releases support
+    //     implementation("io.sentry:sentry-spring-boot-4:8.41.0")
+    // JSON structured logging
+    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 }
 
 sourceSets {

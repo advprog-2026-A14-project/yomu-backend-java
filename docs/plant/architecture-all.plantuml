@@ -1,0 +1,114 @@
+@startuml
+title YOMU - Application Architecture
+
+left to right direction
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam wrapWidth 120
+
+actor "User" as user
+cloud "Google OAuth" as google
+
+package "yomu-frontend\nNext.js BFF" #E3F2FD {
+  component "UI Pages" as fe_ui
+  component "API Wrappers" as fe_api
+  component "Route Handlers\n/api/v1/*" as fe_bff
+  component "Auth Cookie\nhttpOnly JWT" as fe_cookie
+  component "coreFetch" as fe_core
+  component "rustFetch" as fe_rust
+}
+
+package "yomu-backend-java\nSpring Boot Core" #E8F5E9 {
+  component "REST Controllers" as java_api
+  component "Security\nJWT + CORS" as java_sec
+  component "Auth" as java_auth
+  component "User" as java_user
+  component "Bacaan & Kuis" as java_quiz
+  component "Forum" as java_forum
+  component "Admin Outbox" as java_outbox
+  component "JPA Repositories" as java_jpa
+  component "Rust gRPC Client" as java_grpc
+  component "Rust REST Client\nfallback" as java_rest
+}
+
+database "Java PostgreSQL\nyomu_db" as java_db
+
+package "yomu-backend-rust\nAxum + Tonic Engine" #F3E5F5 {
+  component "Axum REST\n/api/v1\n/api/internal" as rust_http
+  component "Tonic gRPC\n:9090" as rust_grpc
+  component "JWT Middleware" as rust_jwt
+  component "API Key Middleware" as rust_key
+  component "League" as rust_league
+  component "User Sync" as rust_sync
+  component "Gamification\nsource exists" as rust_game
+  component "SQLx Repositories" as rust_sqlx
+  component "Redis Adapter" as rust_cache
+}
+
+database "Rust PostgreSQL\nyomu_engine" as rust_db
+database "Redis\nleaderboard cache" as redis
+
+user --> fe_ui : pages
+fe_ui --> fe_api
+fe_api --> fe_bff : REST JSON
+fe_bff --> fe_cookie : set/read JWT
+
+fe_bff --> fe_core : Java domains
+fe_core --> java_api : REST JSON\nCORE_API_BASE_URL
+
+fe_bff --> fe_rust : league domains
+fe_rust --> rust_http : REST JSON\nBearer JWT\nRUST_ENGINE_BASE_URL
+
+java_api --> java_sec
+java_api --> java_auth
+java_api --> java_user
+java_api --> java_quiz
+java_api --> java_forum
+java_api --> java_outbox
+
+java_auth --> google : verify id token
+
+java_auth --> java_jpa
+java_user --> java_jpa
+java_quiz --> java_jpa
+java_forum --> java_jpa
+java_outbox --> java_jpa
+java_jpa --> java_db : Hibernate/JPA
+
+java_auth --> java_grpc : sync shadow user
+java_quiz --> java_grpc : sync quiz history
+java_outbox --> java_grpc : retry failed sync
+java_grpc --> rust_grpc : gRPC protobuf\nx-api-key
+
+java_auth ..> java_rest
+java_quiz ..> java_rest
+java_outbox ..> java_rest
+java_rest ..> rust_http : REST fallback\nx-api-key
+
+rust_http --> rust_jwt : /api/v1
+rust_http --> rust_key : /api/internal
+rust_http --> rust_league
+rust_http --> rust_sync
+
+rust_grpc --> rust_sync : UserSync\nQuizSync
+rust_grpc --> rust_league : League
+
+rust_league --> rust_sqlx
+rust_sync --> rust_sqlx
+rust_game --> rust_sqlx
+rust_sqlx --> rust_db : SQLx
+
+rust_league --> rust_cache
+rust_cache --> redis
+
+note bottom
+Important runtime notes:
+1. Frontend code expects RUST_ENGINE_BASE_URL.
+2. Java default Rust transport is gRPC.
+3. Rust gRPC default port is 9090 and should be exposed if gRPC is used.
+4. Gamification source exists, but HTTP router was not mounted in inspected main.rs.
+end note
+
+@enduml

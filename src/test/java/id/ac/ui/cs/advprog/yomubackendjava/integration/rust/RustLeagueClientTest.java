@@ -14,6 +14,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 class RustLeagueClientTest {
+    private static final String INTERNAL_USER_TIER_PATH = "http://localhost:8080/api/internal/league/users/%s/tier";
 
     private MockRestServiceServer server;
     private RestClientRustLeagueClient client;
@@ -30,7 +31,7 @@ class RustLeagueClientTest {
     void getUserTier_userHasClan_shouldReturnTierResponse() {
         UUID userId = UUID.randomUUID();
 
-        server.expect(requestTo("http://localhost:8080/api/v1/league/users/" + userId + "/tier"))
+        server.expect(requestTo(INTERNAL_USER_TIER_PATH.formatted(userId)))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
                         {
@@ -57,7 +58,7 @@ class RustLeagueClientTest {
     void getUserTier_rustDown_shouldThrowException() {
         UUID userId = UUID.randomUUID();
 
-        server.expect(requestTo("http://localhost:8080/api/v1/league/users/" + userId + "/tier"))
+        server.expect(requestTo(INTERNAL_USER_TIER_PATH.formatted(userId)))
                 .andRespond(withServerError());
 
         assertThrows(Exception.class, () -> client.getUserTier(userId));

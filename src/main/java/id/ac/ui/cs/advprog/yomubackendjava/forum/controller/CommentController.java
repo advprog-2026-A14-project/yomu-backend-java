@@ -37,7 +37,7 @@ public class CommentController {
 
     @PostMapping("/{articleId}/comments")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
-            @PathVariable UUID articleId,
+            @PathVariable String articleId,
             @Valid @RequestBody CreateCommentRequest request) {
 
         CommentResponse data = commentService.createComment(articleId, request);
@@ -47,7 +47,7 @@ public class CommentController {
 
     @GetMapping("/{articleId}/comments")
     public ResponseEntity<ApiResponse<List<CommentResponse>>> getComments(
-            @PathVariable UUID articleId) {
+            @PathVariable String articleId) {
 
         List<CommentResponse> data = commentService.getCommentsByArticle(articleId);
         return ResponseEntity.ok(ApiResponse.success("Komentar berhasil diambil", data));

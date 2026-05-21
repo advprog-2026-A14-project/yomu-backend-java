@@ -4,18 +4,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class UserDto {
     @JsonProperty("user_id")
-    private String userId;
-    private String username;
+    private final String userId;
+    private final String username;
 
     @JsonProperty("display_name")
-    private String displayName;
+    private final String displayName;
 
-    private String email;
+    private final String email;
 
     @JsonProperty("phone_number")
-    private String phoneNumber;
+    private final String phoneNumber;
 
-    private String role;
+    private final String role;
 
     public UserDto(
             String userId,

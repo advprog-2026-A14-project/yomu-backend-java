@@ -155,6 +155,37 @@ class RegisterRustSyncTest {
         assertThat(failedSyncEventRepository.count()).isZero();
     }
 
+    @Test
+    void registerShouldSanitizeRustErrorBodyBeforeCreatingOutbox() throws Exception {
+        when(rustEngineClient.syncUser(any(UUID.class)))
+                .thenReturn(new RustEngineClient.SyncResult(
+                        500,
+                        "{\"access_token\":\"secret-token\",\"password\":\"secret-password\",\"detail\":\"boom\"}"
+                ));
+
+        mockMvc.perform(post(REGISTER_PATH)
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "syncsensitive",
+                                  "display_name": "Sync Sensitive",
+                                  "password": "rahasia123",
+                                  "email": "syncsensitive@example.com"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(SUCCESS_JSON_PATH).value(true));
+
+        List<FailedSyncEventEntity> events = failedSyncEventRepository.findAll();
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0).getLastError())
+                .contains("status=500")
+                .doesNotContain("secret-token")
+                .doesNotContain("secret-password")
+                .doesNotContain("access_token")
+                .doesNotContain("password");
+    }
+
     @TestConfiguration
     static class MockBeans {
         @Bean

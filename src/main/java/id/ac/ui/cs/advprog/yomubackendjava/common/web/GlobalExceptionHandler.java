@@ -6,6 +6,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.NotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -69,7 +70,7 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ApiResponse<Void>> buildError(HttpStatus status, String message) {
-        String sanitizedMessage = (message == null || message.isBlank()) ? status.getReasonPhrase() : message;
+        String sanitizedMessage = SecuritySanitizer.safeErrorMessage(message, status.getReasonPhrase());
         return ResponseEntity.status(status).body(ApiResponse.error(sanitizedMessage));
     }
 }

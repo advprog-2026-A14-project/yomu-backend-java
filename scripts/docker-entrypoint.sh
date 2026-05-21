@@ -37,7 +37,7 @@ echo ""
 echo "Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}..."
 
 for i in $(seq 1 $MAX_RETRIES); do
-  if wget --spider -q "${DB_HOST}:${DB_PORT}" 2>/dev/null || nc -z "${DB_HOST}" "${DB_PORT}" 2>/dev/null; then
+  if nc -z "${DB_HOST}" "${DB_PORT}" 2>/dev/null || wget --spider -q --timeout=5 "${DB_HOST}:${DB_PORT}" 2>/dev/null; then
     echo "PostgreSQL is ready!"
     break
   fi
@@ -55,5 +55,16 @@ echo "Starting Spring Boot application..."
 echo "Schema will be auto-managed by Hibernate (ddl-auto=update)"
 echo ""
 
-exec java -Djava.security.egd=file:/dev/./urandom -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 \
-  -XX:+ExitOnOutOfMemoryError -jar app.jar
+JAVA_OPTS="-Djava.security.egd=file:/dev/./urandom \
+  -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 \
+  -XX:+ExitOnOutOfMemoryError"
+
+if [ -f /app/otel/opentelemetry-javaagent.jar ] && [ -s /app/otel/opentelemetry-javaagent.jar ]; then
+  JAVA_OPTS="$JAVA_OPTS \
+    -Dotel.sdk.enabled=true \
+    -Dotel.resource.attributes=service.name=yomu-backend-java \
+    -Dotel.exporter.otlp.endpoint=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4317} \
+    -javaagent:/app/otel/opentelemetry-javaagent.jar"
+fi
+
+exec java $JAVA_OPTS -jar app.jar

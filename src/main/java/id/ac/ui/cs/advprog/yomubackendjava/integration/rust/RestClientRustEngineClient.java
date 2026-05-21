@@ -2,6 +2,7 @@ package id.ac.ui.cs.advprog.yomubackendjava.integration.rust;
 
 import id.ac.ui.cs.advprog.yomubackendjava.integration.rust.dto.SyncUserRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,7 @@ import java.time.Duration;
 import java.util.UUID;
 
 @Component
+@ConditionalOnProperty(name = "rust.integration.transport", havingValue = "rest")
 public class RestClientRustEngineClient implements RustEngineClient {
     private static final String USER_SYNC_ENDPOINT = "/api/internal/users/sync";
     private static final String API_KEY_HEADER = "x-api-key";

@@ -157,4 +157,25 @@ class RestGoogleIdTokenVerifierTest {
         assertEquals("audience id_token tidak valid", exception.getMessage());
         server.verify();
     }
+
+    @Test
+    void shouldRejectUnverifiedEmail() {
+        server.expect(requestTo("https://oauth2.googleapis.com/tokeninfo?id_token=unverified-email"))
+                .andRespond(withSuccess("""
+                        {
+                          "sub": "google-sub",
+                          "iss": "https://accounts.google.com",
+                          "aud": "test-client-id",
+                          "exp": "%d",
+                          "email": "user@example.com",
+                          "email_verified": "false"
+                        }
+                        """.formatted(Instant.now().plusSeconds(300).getEpochSecond()), MediaType.APPLICATION_JSON));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> verifier.verify("unverified-email"));
+
+        assertEquals("email id_token belum terverifikasi", exception.getMessage());
+        server.verify();
+    }
 }
