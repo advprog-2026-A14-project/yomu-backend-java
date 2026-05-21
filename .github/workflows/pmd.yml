@@ -44,4 +44,4 @@ jobs:
             build/reports/tests/test/
             build/reports/jacoco/
             build/reports/pmd/
-          retention-days: 7
+          retention-days: 30

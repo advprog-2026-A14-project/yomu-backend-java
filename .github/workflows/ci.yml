@@ -50,7 +50,44 @@ jobs:
           path: |
             build/test-results/test/
             build/reports/tests/test/
-          retention-days: 7
+          retention-days: 30
+
+  functional_tests:
+    name: Functional/API tests
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out the Git repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java toolchain
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Run functional/API flow tests
+        run: |
+          ./gradlew test \
+            --tests "id.ac.ui.cs.advprog.yomubackendjava.integration.*" \
+            --tests "id.ac.ui.cs.advprog.yomubackendjava.auth.*ControllerTest" \
+            --tests "id.ac.ui.cs.advprog.yomubackendjava.user.*Test" \
+            --tests "id.ac.ui.cs.advprog.yomubackendjava.forum.controller.*" \
+            --tests "id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.controller.*"
+
+      - name: Upload functional/API artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functional-api-test-results-${{ github.run_id }}
+          path: |
+            build/test-results/test/
+            build/reports/tests/test/
+          retention-days: 30
 
   quality_checks:
     name: Quality checks (PMD + JaCoCo)
