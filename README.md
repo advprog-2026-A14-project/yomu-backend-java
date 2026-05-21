@@ -2,9 +2,14 @@
 
 Backend utama untuk modul autentikasi, user management, bacaan-kuis, dan integrasi sinkronisasi ke Rust engine.
 
-## Link Deployment 
-- Link Production : [https://yomu-backend-78a746322ad9.herokuapp.com/]
-- Link Staging : [https://yomu-backend-staging-45829228a35b.herokuapp.com/]
+## QA dan CI
+
+Ringkasan konfigurasi:
+- CI: `.github/workflows/ci.yml` menjalankan unit test, functional/API test, dan quality checks.
+- Release image: `.github/workflows/release.yml` build dan push Docker image ke GHCR.
+- Quality tools: PMD, JaCoCo HTML/XML report, dan JaCoCo coverage verification.
+- Functional/API testing: Spring MockMvc controller/integration flow untuk auth, user, forum, bacaan-kuis, security, dan outbox.
+- Monitoring: Spring Actuator health/metrics/prometheus, Micrometer, OTEL, HikariCP metrics, dan JSON logging.
 
 ## Prerequisites
 - Java 21
@@ -176,11 +181,6 @@ Folder penting di `src/main/java/id/ac/ui/cs/advprog/yomubackendjava`:
 - `admin`: endpoint operasional admin (monitor/retry outbox).
 - `common`: wrapper response, exception global, util/config shared lintas modul.
 - `health`: endpoint health check.
-
-Dokumentasi API:
-- `docs/api/auth.md`
-- `docs/api/admin-outbox.md`
-- `docs/api/forum.md`
 
 ## 11) Apakah Fondasi Ini Bisa Dipakai untuk Fitur Tambahan?
 Ya, fondasi ini memang dibuat reusable.
