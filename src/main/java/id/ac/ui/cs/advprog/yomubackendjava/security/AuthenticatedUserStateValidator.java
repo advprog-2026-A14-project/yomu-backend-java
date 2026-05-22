@@ -21,7 +21,12 @@ public class AuthenticatedUserStateValidator {
     }
 
     public void validate(JwtService.JwtClaims claims) {
-        userRepository.findById(claims.userId()).ifPresent(user -> validateKnownUser(user, claims));
+        UserEntity user = userRepository.findById(claims.userId())
+                .orElseThrow(() -> {
+                    authEventLogger.jwtValidationFailed("USER_NOT_FOUND");
+                    return new UnauthorizedException("Invalid or expired token");
+                });
+        validateKnownUser(user, claims);
     }
 
     private void validateKnownUser(UserEntity user, JwtService.JwtClaims claims) {

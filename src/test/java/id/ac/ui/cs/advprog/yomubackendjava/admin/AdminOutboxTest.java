@@ -10,6 +10,8 @@ import id.ac.ui.cs.advprog.yomubackendjava.outbox.repo.FailedSyncEventRepository
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtAuthFilter;
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
+import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
+import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -67,11 +69,15 @@ class AdminOutboxTest {
     @Autowired
     private QuizSyncClient quizSyncClient;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @BeforeEach
     void setUp() {
         Mockito.reset(rustEngineClient);
         Mockito.reset(quizSyncClient);
         failedSyncEventRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
@@ -243,7 +249,13 @@ class AdminOutboxTest {
     }
 
     private String bearerToken(Role role) {
-        return JwtAuthFilter.BEARER_PREFIX + jwtService.generateToken(UUID.randomUUID(), role);
+        UserEntity user = new UserEntity();
+        user.setUsername("outbox_" + role.name().toLowerCase() + "_" + UUID.randomUUID());
+        user.setDisplayName("Outbox " + role.name());
+        user.setRole(role);
+        user.setPasswordHash("hash");
+        UserEntity saved = userRepository.saveAndFlush(user);
+        return JwtAuthFilter.BEARER_PREFIX + jwtService.generateToken(saved.getUserId(), saved.getRole());
     }
 
     private FailedSyncEventEntity buildEvent(UUID userId, SyncEventStatus status, int retryCount) {

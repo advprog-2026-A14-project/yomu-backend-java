@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -21,6 +22,11 @@ public interface CommentReactionRepository extends JpaRepository<CommentReaction
     int countByCommentIdAndReactionType(UUID commentId, ReactionType reactionType);
 
     void deleteByCommentId(UUID commentId);
+
+    @Modifying
+    @Query("DELETE FROM CommentReaction cr WHERE cr.commentId IN "
+            + "(SELECT c.id FROM Comment c WHERE c.articleId = :articleId)")
+    void deleteByArticleId(@Param("articleId") String articleId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT cr FROM CommentReaction cr WHERE cr.commentId = :commentId AND cr.userId = :userId AND cr.reactionType = :reactionType")

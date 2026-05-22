@@ -16,6 +16,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.repository.CommentRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
+import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,9 @@ class CommentServiceTest {
     @Mock
     private RustLeagueClient rustLeagueClient;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private CommentService commentService;
 
@@ -79,6 +83,7 @@ class CommentServiceTest {
         article.setId(articleId);
         article.setTitle("Artikel forum");
         lenient().when(articleService.findById(articleId)).thenReturn(article);
+        lenient().when(userRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
     }
 
     @AfterEach

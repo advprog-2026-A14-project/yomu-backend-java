@@ -4,10 +4,12 @@ import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizQuestionResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.integration.QuizSyncClient;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.UserAttempt;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.ArticleRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.QuizRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.UserAttemptRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ConflictException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.NotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.common.security.SecuritySanitizer;
 import id.ac.ui.cs.advprog.yomubackendjava.outbox.OutboxService;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizAnswerRequest;
@@ -23,29 +25,36 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class QuizService {
     private static final String QUIZ_ALREADY_ATTEMPTED_MESSAGE = "Kuis sudah pernah dikerjakan!";
 
     private final UserAttemptRepository attemptRepository;
+    private final ArticleRepository articleRepository;
     private final QuizRepository quizRepository;
     private final QuizSyncClient quizSyncClient;
     private final OutboxService outboxService;
 
     public QuizService(
             UserAttemptRepository attemptRepository,
+            ArticleRepository articleRepository,
             QuizRepository quizRepository,
             QuizSyncClient quizSyncClient,
             OutboxService outboxService) {
         this.attemptRepository = attemptRepository;
+        this.articleRepository = articleRepository;
         this.quizRepository = quizRepository;
         this.quizSyncClient = quizSyncClient;
         this.outboxService = outboxService;
     }
 
     public List<QuizQuestionResponse> getAvailableQuizzes(UUID userId, String articleId) {
+        validateArticleId(articleId);
+        ensureArticleExists(articleId);
         if (attemptRepository.existsByUserIdAndKuisId(userId, articleId)) {
             throw new ConflictException("Kuis sudah pernah diselesaikan");
         }
@@ -63,6 +72,7 @@ public class QuizService {
             throw new BadRequestException("user_id wajib diisi");
         }
         request.setUserId(authenticatedUserId);
+        ensureArticleExists(request.getArticleId());
 
         if (attemptRepository.existsByUserIdAndKuisId(request.getUserId(), request.getArticleId())) {
             throw new ConflictException(QUIZ_ALREADY_ATTEMPTED_MESSAGE);
@@ -86,9 +96,7 @@ public class QuizService {
         if (request == null) {
             throw new BadRequestException("Request kuis tidak boleh kosong");
         }
-        if (request.getArticleId() == null || request.getArticleId().isBlank()) {
-            throw new BadRequestException("article_id wajib diisi");
-        }
+        validateArticleId(request.getArticleId());
         if (request.getScore() < 0 || request.getScore() > 100) {
             throw new BadRequestException("score harus berada di antara 0 dan 100");
         }
@@ -100,6 +108,7 @@ public class QuizService {
     @Transactional
     public QuizSubmitResult submitAndSync(UUID authenticatedUserId, String articleId, QuizSubmitRequest request) {
         validateSubmitRequest(authenticatedUserId, articleId, request);
+        ensureArticleExists(articleId);
 
         if (attemptRepository.existsByUserIdAndKuisId(authenticatedUserId, articleId)) {
             throw new ConflictException(QUIZ_ALREADY_ATTEMPTED_MESSAGE);
@@ -111,6 +120,7 @@ public class QuizService {
         }
 
         Map<String, String> submittedAnswers = mapSubmittedAnswers(request.getAnswers());
+        validateAnswersBelongToArticle(submittedAnswers.keySet(), quizzes);
 
         long correctCount = quizzes.stream()
                 .filter(quiz -> isCorrectAnswer(quiz, submittedAnswers.get(quiz.getId())))
@@ -150,9 +160,7 @@ public class QuizService {
         if (userId == null) {
             throw new BadRequestException("user_id wajib diisi");
         }
-        if (articleId == null || articleId.isBlank()) {
-            throw new BadRequestException("article_id wajib diisi");
-        }
+        validateArticleId(articleId);
         if (request == null || request.getAnswers() == null || request.getAnswers().isEmpty()) {
             throw new BadRequestException("answers wajib diisi");
         }
@@ -178,6 +186,17 @@ public class QuizService {
         return mappedAnswers;
     }
 
+    private void validateAnswersBelongToArticle(Set<String> submittedQuizIds, List<Quiz> quizzes) {
+        Set<String> expectedQuizIds = new HashSet<>();
+        for (Quiz quiz : quizzes) {
+            expectedQuizIds.add(quiz.getId());
+        }
+
+        if (!expectedQuizIds.equals(submittedQuizIds)) {
+            throw new BadRequestException("answers harus mencakup seluruh quiz_id dari artikel ini");
+        }
+    }
+
     private boolean isCorrectAnswer(Quiz quiz, String submittedAnswer) {
         if (submittedAnswer == null) {
             return false;
@@ -196,5 +215,17 @@ public class QuizService {
 
     private String syncErrorMessage(RuntimeException ex) {
         return SecuritySanitizer.safeErrorMessage(ex.getMessage(), "rust quiz sync gagal");
+    }
+
+    private void validateArticleId(String articleId) {
+        if (articleId == null || articleId.isBlank()) {
+            throw new BadRequestException("article_id wajib diisi");
+        }
+    }
+
+    private void ensureArticleExists(String articleId) {
+        if (!articleRepository.existsById(articleId)) {
+            throw new NotFoundException("Artikel tidak ditemukan");
+        }
     }
 }

@@ -5,6 +5,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CommentResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.CreateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.ReactionRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.ReactionResponse;
+import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.ReactionSummaryResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.UpdateCommentRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.service.CommentReactionService;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.service.CommentService;
@@ -80,15 +81,10 @@ public class CommentController {
     }
 
     @GetMapping("/comments/{commentId}/reactions")
-    public ResponseEntity<ApiResponse<ReactionResponse>> getReactions(
+    public ResponseEntity<ApiResponse<ReactionSummaryResponse>> getReactions(
             @PathVariable UUID commentId) {
 
-        int count = reactionService.getReactionCount(commentId, id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType.UPVOTE);
-        ReactionResponse data = ReactionResponse.builder()
-                .commentId(commentId)
-                .reactionType(id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType.UPVOTE)
-                .reactionCount(count)
-                .build();
+        ReactionSummaryResponse data = reactionService.getReactionSummary(commentId);
         return ResponseEntity.ok(ApiResponse.success("Reaksi berhasil diambil", data));
     }
 }

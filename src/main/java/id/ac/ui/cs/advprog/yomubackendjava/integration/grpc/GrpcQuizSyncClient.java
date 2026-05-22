@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.integration.grpc;
 
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.integration.EngineArticleIdMapper;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.integration.QuizSyncClient;
 import id.ac.ui.cs.advprog.yomubackendjava.proto.quizsync.QuizSyncServiceGrpc;
 import id.ac.ui.cs.advprog.yomubackendjava.proto.quizsync.SyncQuizHistoryRequest;
@@ -31,7 +32,7 @@ public class GrpcQuizSyncClient implements QuizSyncClient {
         try {
             var grpcRequest = SyncQuizHistoryRequest.newBuilder()
                     .setUserId(request.getUserId().toString())
-                    .setArticleId(request.getArticleId())
+                    .setArticleId(EngineArticleIdMapper.toEngineArticleId(request.getArticleId()))
                     .setScore(request.getScore())
                     .setAccuracy(request.getAccuracy())
                     .build();
