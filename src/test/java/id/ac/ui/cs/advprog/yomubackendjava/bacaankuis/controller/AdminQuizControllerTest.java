@@ -21,6 +21,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Locale;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -158,7 +160,7 @@ class AdminQuizControllerTest {
 
     private String tokenFor(Role role) {
         UserEntity user = new UserEntity();
-        user.setUsername("admin_quiz_" + role.name().toLowerCase());
+        user.setUsername("admin_quiz_" + role.name().toLowerCase(Locale.ROOT));
         user.setDisplayName("Admin Quiz " + role.name());
         user.setRole(role);
         user.setPasswordHash("hash");

@@ -24,6 +24,8 @@ import java.util.List;
 @Configuration
 @EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
+    private static final String PELAJAR_ROLE = "PELAJAR";
+
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
@@ -50,14 +52,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**", "/api/v1/health").permitAll()
                         .requestMatchers("/api/v1/users/me", "/api/v1/users/**", "/api/v1/secure/**").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/articles/**").hasRole("PELAJAR")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/bacaankuis", "/api/bacaankuis").hasRole("PELAJAR")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/quizzes/*").hasRole("PELAJAR")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/quizzes/*/submit").hasRole("PELAJAR")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/articles/**").hasRole(PELAJAR_ROLE)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/bacaankuis", "/api/bacaankuis").hasRole(PELAJAR_ROLE)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/quizzes/*").hasRole(PELAJAR_ROLE)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/quizzes/*/submit").hasRole(PELAJAR_ROLE)
                         .requestMatchers(HttpMethod.GET, "/api/v1/forums/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/forums/*/comments").hasRole("PELAJAR")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/forums/comments/*").hasRole("PELAJAR")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/forums/comments/*/reactions").hasRole("PELAJAR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/forums/*/comments").hasRole(PELAJAR_ROLE)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/forums/comments/*").hasRole(PELAJAR_ROLE)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/forums/comments/*/reactions").hasRole(PELAJAR_ROLE)
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/forums/comments/*").authenticated()
                         .anyRequest().permitAll()
                 )

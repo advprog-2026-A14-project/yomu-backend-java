@@ -11,13 +11,15 @@ import org.hibernate.annotations.OnDeleteAction;
 
 import java.util.UUID;
 
+import static id.ac.ui.cs.advprog.yomubackendjava.common.persistence.PersistenceColumns.USER_ID;
+
 @Entity
 @Table(
     name = "comment_reactions",
     uniqueConstraints = {
         @UniqueConstraint(
             name = "uq_comment_reaction_user_type",
-            columnNames = {"comment_id", "user_id", "reaction_type"}
+            columnNames = {"comment_id", USER_ID, "reaction_type"}
         )
     }
 )
@@ -33,7 +35,7 @@ public class CommentReaction {
     @Column(name = "comment_id", nullable = false)
     private UUID commentId;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = USER_ID, nullable = false)
     private UUID userId;
 
     @Enumerated(EnumType.STRING)
@@ -57,8 +59,8 @@ public class CommentReaction {
     @Setter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
-            name = "user_id",
-            referencedColumnName = "user_id",
+            name = USER_ID,
+            referencedColumnName = USER_ID,
             insertable = false,
             updatable = false,
             foreignKey = @ForeignKey(name = "fk_comment_reactions_user")
