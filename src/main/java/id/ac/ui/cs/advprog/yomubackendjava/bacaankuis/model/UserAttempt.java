@@ -10,13 +10,15 @@ import org.hibernate.annotations.OnDeleteAction;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static id.ac.ui.cs.advprog.yomubackendjava.common.persistence.PersistenceColumns.USER_ID;
+
 @Entity
 @Table(
         name = "user_attempts",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_user_attempt_user_quiz",
-                        columnNames = {"user_id", "kuis_id"}
+                        columnNames = {USER_ID, "kuis_id"}
                 )
         }
 )
@@ -28,7 +30,7 @@ public class UserAttempt {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = USER_ID, nullable = false)
     private UUID userId;
 
     @Column(name = "kuis_id", nullable = false)
@@ -41,8 +43,8 @@ public class UserAttempt {
     @Setter(AccessLevel.NONE)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
-            name = "user_id",
-            referencedColumnName = "user_id",
+            name = USER_ID,
+            referencedColumnName = USER_ID,
             insertable = false,
             updatable = false,
             foreignKey = @ForeignKey(name = "fk_user_attempts_user")
