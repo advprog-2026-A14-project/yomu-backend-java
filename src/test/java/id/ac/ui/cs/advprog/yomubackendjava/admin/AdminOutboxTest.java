@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -250,7 +251,7 @@ class AdminOutboxTest {
 
     private String bearerToken(Role role) {
         UserEntity user = new UserEntity();
-        user.setUsername("outbox_" + role.name().toLowerCase() + "_" + UUID.randomUUID());
+        user.setUsername("outbox_" + role.name().toLowerCase(Locale.ROOT) + "_" + UUID.randomUUID());
         user.setDisplayName("Outbox " + role.name());
         user.setRole(role);
         user.setPasswordHash("hash");

@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -104,7 +105,7 @@ class PublicQuizControllerTest {
 
     private UserEntity saveUser(Role role) {
         UserEntity user = new UserEntity();
-        user.setUsername("public_quiz_" + role.name().toLowerCase());
+        user.setUsername("public_quiz_" + role.name().toLowerCase(Locale.ROOT));
         user.setDisplayName("Public Quiz " + role.name());
         user.setRole(role);
         user.setPasswordHash("hash");

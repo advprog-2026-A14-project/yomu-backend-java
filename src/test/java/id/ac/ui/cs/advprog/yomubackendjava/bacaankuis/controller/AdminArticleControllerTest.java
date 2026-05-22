@@ -20,6 +20,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class AdminArticleControllerTest {
     private static final String ARTICLE_ID = "art-001";
+    private static final String JSON_SUCCESS = "$.success";
 
     @Autowired
     private MockMvc mockMvc;
@@ -81,7 +83,7 @@ class AdminArticleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(JSON_SUCCESS).value(true))
                 .andExpect(jsonPath("$.data.id").value(ARTICLE_ID))
                 .andExpect(jsonPath("$.data.category").value("Olahraga"));
 
@@ -109,7 +111,7 @@ class AdminArticleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(jsonPath(JSON_SUCCESS).value(false));
     }
 
     @Test
@@ -119,7 +121,7 @@ class AdminArticleControllerTest {
         mockMvc.perform(delete("/api/v1/admin/articles/{articleId}", ARTICLE_ID)
                         .header(JwtAuthFilter.AUTHORIZATION_HEADER, JwtAuthFilter.BEARER_PREFIX + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(jsonPath(JSON_SUCCESS).value(true));
 
         verify(articleService).deleteArticle(ARTICLE_ID);
     }
@@ -142,13 +144,13 @@ class AdminArticleControllerTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath(JSON_SUCCESS).value(true))
                 .andExpect(jsonPath("$.data.title").value("Judul Baru"));
     }
 
     private String tokenFor(Role role) {
         UserEntity user = new UserEntity();
-        user.setUsername("admin_article_" + role.name().toLowerCase());
+        user.setUsername("admin_article_" + role.name().toLowerCase(Locale.ROOT));
         user.setDisplayName("Admin Article " + role.name());
         user.setRole(role);
         user.setPasswordHash("hash");
