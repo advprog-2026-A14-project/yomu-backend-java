@@ -6,4 +6,6 @@ import java.util.UUID;
 
 public interface UserAttemptRepository extends JpaRepository<UserAttempt, Long> {
     boolean existsByUserIdAndKuisId(UUID userId, String articleId);
+
+    void deleteByKuisId(String kuisId);
 }

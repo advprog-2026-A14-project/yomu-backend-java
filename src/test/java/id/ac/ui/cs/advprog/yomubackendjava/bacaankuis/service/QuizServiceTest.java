@@ -7,6 +7,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSyncRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.integration.QuizSyncClient;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.Quiz;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.UserAttempt;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.ArticleRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.QuizRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.repository.UserAttemptRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
@@ -36,6 +37,9 @@ class QuizServiceTest {
     private UserAttemptRepository attemptRepository;
 
     @Mock
+    private ArticleRepository articleRepository;
+
+    @Mock
     private QuizSyncClient quizSyncClient;
 
     @Mock
@@ -52,6 +56,7 @@ class QuizServiceTest {
         UUID userId = UUID.randomUUID();
         QuizSyncRequest request = new QuizSyncRequest(userId, ARTICLE_ID, 100.0, 100.0);
 
+        when(articleRepository.existsById(ARTICLE_ID)).thenReturn(true);
         when(attemptRepository.existsByUserIdAndKuisId(userId, ARTICLE_ID)).thenReturn(true);
 
         assertThrows(ConflictException.class, () -> quizService.submitAndSync(userId, request));
@@ -65,6 +70,7 @@ class QuizServiceTest {
         UUID userId = UUID.randomUUID();
         QuizSyncRequest request = new QuizSyncRequest(userId, ARTICLE_ID, 85.0, 90.0);
 
+        when(articleRepository.existsById(ARTICLE_ID)).thenReturn(true);
         when(attemptRepository.existsByUserIdAndKuisId(userId, ARTICLE_ID)).thenReturn(false);
 
         quizService.submitAndSync(userId, request);
@@ -95,6 +101,7 @@ class QuizServiceTest {
         UUID spoofedUserId = UUID.randomUUID();
         QuizSyncRequest request = new QuizSyncRequest(spoofedUserId, ARTICLE_ID, 85.0, 90.0);
 
+        when(articleRepository.existsById(ARTICLE_ID)).thenReturn(true);
         when(attemptRepository.existsByUserIdAndKuisId(authenticatedUserId, ARTICLE_ID)).thenReturn(false);
 
         quizService.submitAndSync(authenticatedUserId, request);
@@ -114,6 +121,7 @@ class QuizServiceTest {
                 new QuizAnswerRequest(SECOND_QUIZ_ID, "C")
         ));
 
+        when(articleRepository.existsById(ARTICLE_ID)).thenReturn(true);
         when(attemptRepository.existsByUserIdAndKuisId(userId, ARTICLE_ID)).thenReturn(false);
         when(quizRepository.findByArticleId(ARTICLE_ID)).thenReturn(List.of(
                 new Quiz(FIRST_QUIZ_ID, ARTICLE_ID, "Question 1", QUIZ_OPTIONS, "A"),
@@ -150,6 +158,7 @@ class QuizServiceTest {
                 new QuizAnswerRequest(SECOND_QUIZ_ID, "C")
         ));
 
+        when(articleRepository.existsById(ARTICLE_ID)).thenReturn(true);
         when(attemptRepository.existsByUserIdAndKuisId(userId, ARTICLE_ID)).thenReturn(false);
         when(quizRepository.findByArticleId(ARTICLE_ID)).thenReturn(List.of(
                 new Quiz(FIRST_QUIZ_ID, ARTICLE_ID, "Question 1", QUIZ_OPTIONS, "A"),
@@ -173,6 +182,7 @@ class QuizServiceTest {
                 new QuizAnswerRequest(SECOND_QUIZ_ID, "D")
         ));
 
+        when(articleRepository.existsById(ARTICLE_ID)).thenReturn(true);
         when(attemptRepository.existsByUserIdAndKuisId(userId, ARTICLE_ID)).thenReturn(false);
         when(quizRepository.findByArticleId(ARTICLE_ID)).thenReturn(List.of(
                 new Quiz(FIRST_QUIZ_ID, ARTICLE_ID, "Question 1", QUIZ_OPTIONS, "A"),

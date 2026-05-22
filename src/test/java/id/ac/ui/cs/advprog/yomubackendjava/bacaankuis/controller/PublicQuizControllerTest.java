@@ -5,6 +5,9 @@ import id.ac.ui.cs.advprog.yomubackendjava.security.JwtAuthFilter;
 import id.ac.ui.cs.advprog.yomubackendjava.security.JwtService;
 import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.QuizSubmitRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.user.domain.UserEntity;
+import id.ac.ui.cs.advprog.yomubackendjava.user.repo.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +39,14 @@ class PublicQuizControllerTest {
     @Autowired
     private QuizService quizService;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+    }
+
     @TestConfiguration
     static class MockConfig {
         @Bean
@@ -46,8 +57,9 @@ class PublicQuizControllerTest {
 
     @Test
     void testSubmitQuizPayloadUsesSnakeCase() throws Exception {
-        UUID authenticatedUserId = UUID.randomUUID();
-        String token = jwtService.generateToken(authenticatedUserId, Role.PELAJAR);
+        UserEntity user = saveUser(Role.PELAJAR);
+        UUID authenticatedUserId = user.getUserId();
+        String token = jwtService.generateToken(authenticatedUserId, user.getRole());
 
         String json = """
         {
@@ -88,5 +100,14 @@ class PublicQuizControllerTest {
                         .content(json))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
+    }
+
+    private UserEntity saveUser(Role role) {
+        UserEntity user = new UserEntity();
+        user.setUsername("public_quiz_" + role.name().toLowerCase());
+        user.setDisplayName("Public Quiz " + role.name());
+        user.setRole(role);
+        user.setPasswordHash("hash");
+        return userRepository.saveAndFlush(user);
     }
 }
