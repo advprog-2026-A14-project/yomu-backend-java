@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.controller;
 
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.ArticleCreateRequest;
+import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.dto.ArticleUpdateRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.model.Article;
 import id.ac.ui.cs.advprog.yomubackendjava.bacaankuis.service.ArticleService;
 import id.ac.ui.cs.advprog.yomubackendjava.common.api.ApiResponse;
@@ -22,6 +23,14 @@ public class AdminArticleController {
         Article article = articleService.createArticle(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Artikel berhasil dibuat", article));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<ApiResponse<Article>> update(
+            @PathVariable String id,
+            @RequestBody ArticleUpdateRequest request) {
+        Article article = articleService.updateArticle(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Artikel berhasil diperbarui", article));
     }
 
     @DeleteMapping("/{id}")

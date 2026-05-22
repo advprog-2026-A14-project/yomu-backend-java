@@ -4,6 +4,7 @@ import tools.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.yomubackendjava.common.web.GlobalExceptionHandler;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.ReactionRequest;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.ReactionResponse;
+import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.ReactionSummaryResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.CommentNotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.service.CommentReactionService;
@@ -198,21 +199,27 @@ class CommentReactionControllerTest {
 
     @Test
     void getReactions_shouldReturn200WithCount() throws Exception {
-        when(reactionService.getReactionCount(eq(commentId), eq(ReactionType.UPVOTE)))
-                .thenReturn(5);
+        when(reactionService.getReactionSummary(commentId))
+                .thenReturn(ReactionSummaryResponse.builder()
+                        .commentId(commentId)
+                        .upvoteCount(5)
+                        .downvoteCount(1)
+                        .emojiCount(2)
+                        .build());
 
         mockMvc.perform(get(REACTION_ENDPOINT, commentId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(JSON_SUCCESS).value(true))
-                .andExpect(jsonPath("$.data.reaction_count").value(5))
-                .andExpect(jsonPath("$.data.reaction_type").value("UPVOTE"));
+                .andExpect(jsonPath("$.data.upvote_count").value(5))
+                .andExpect(jsonPath("$.data.downvote_count").value(1))
+                .andExpect(jsonPath("$.data.emoji_count").value(2));
     }
 
     @Test
     void getReactions_commentNotFound_shouldReturn404() throws Exception {
         UUID fakeId = UUID.randomUUID();
 
-        when(reactionService.getReactionCount(eq(fakeId), eq(ReactionType.UPVOTE)))
+        when(reactionService.getReactionSummary(fakeId))
                 .thenThrow(new CommentNotFoundException(fakeId));
 
         mockMvc.perform(get(REACTION_ENDPOINT, fakeId))

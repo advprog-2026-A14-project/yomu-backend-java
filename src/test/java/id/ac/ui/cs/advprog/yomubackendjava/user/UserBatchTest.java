@@ -100,7 +100,8 @@ class UserBatchTest {
     }
 
     private String bearerPelajarToken() {
-        return JwtAuthFilter.BEARER_PREFIX + jwtService.generateToken(UUID.randomUUID(), Role.PELAJAR);
+        UserEntity user = saveUser("batch_auth_" + UUID.randomUUID(), "Batch Auth");
+        return JwtAuthFilter.BEARER_PREFIX + jwtService.generateToken(user.getUserId(), user.getRole());
     }
 
     private UserEntity saveUser(String username, String displayName) {

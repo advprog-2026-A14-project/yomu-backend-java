@@ -1,7 +1,10 @@
 package id.ac.ui.cs.advprog.yomubackendjava.forum.service;
 
 import id.ac.ui.cs.advprog.yomubackendjava.common.exception.UnauthorizedException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.BadRequestException;
+import id.ac.ui.cs.advprog.yomubackendjava.common.exception.ForbiddenException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.ReactionResponse;
+import id.ac.ui.cs.advprog.yomubackendjava.forum.dto.ReactionSummaryResponse;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.exception.CommentNotFoundException;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.CommentReaction;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.model.ReactionType;
@@ -10,6 +13,7 @@ import id.ac.ui.cs.advprog.yomubackendjava.forum.repository.CommentRepository;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.strategy.ReactionStrategy;
 import id.ac.ui.cs.advprog.yomubackendjava.forum.strategy.ReactionStrategyFactory;
 import id.ac.ui.cs.advprog.yomubackendjava.security.CurrentUser;
+import id.ac.ui.cs.advprog.yomubackendjava.user.domain.Role;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,8 +42,10 @@ public class CommentReactionService implements ICommentReactionService {
     @Override
     @Transactional
     public ReactionResponse toggleReaction(UUID commentId, ReactionType reactionType) {
-        UUID userId = CurrentUser.userId()
-                .orElseThrow(() -> new UnauthorizedException(LOGIN_REQUIRED_MESSAGE));
+        UUID userId = requirePelajar();
+        if (reactionType == null) {
+            throw new BadRequestException("reaction_type wajib diisi");
+        }
 
         assertCommentExists(commentId);
 
@@ -75,6 +81,17 @@ public class CommentReactionService implements ICommentReactionService {
         return reactionRepository.countByCommentIdAndReactionType(commentId, reactionType);
     }
 
+    @Override
+    public ReactionSummaryResponse getReactionSummary(UUID commentId) {
+        assertCommentExists(commentId);
+        return ReactionSummaryResponse.builder()
+                .commentId(commentId)
+                .upvoteCount(reactionRepository.countByCommentIdAndReactionType(commentId, ReactionType.UPVOTE))
+                .downvoteCount(reactionRepository.countByCommentIdAndReactionType(commentId, ReactionType.DOWNVOTE))
+                .emojiCount(reactionRepository.countByCommentIdAndReactionType(commentId, ReactionType.EMOJI))
+                .build();
+    }
+
     private void assertCommentExists(UUID commentId) {
         commentRepository.findById(commentId)
                 .orElseThrow(() -> new CommentNotFoundException(commentId));
@@ -97,6 +114,16 @@ public class CommentReactionService implements ICommentReactionService {
             case DOWNVOTE -> Optional.of(ReactionType.UPVOTE);
             case EMOJI -> Optional.empty();
         };
+    }
+
+    private UUID requirePelajar() {
+        UUID userId = CurrentUser.userId()
+                .orElseThrow(() -> new UnauthorizedException(LOGIN_REQUIRED_MESSAGE));
+        Role role = CurrentUser.role().orElseThrow(() -> new UnauthorizedException(LOGIN_REQUIRED_MESSAGE));
+        if (role != Role.PELAJAR) {
+            throw new ForbiddenException("Hanya pelajar yang dapat memberi reaksi");
+        }
+        return userId;
     }
 
     private record OppositeVote(ReactionType type, CommentReaction reaction) {

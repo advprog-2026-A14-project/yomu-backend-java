@@ -74,7 +74,8 @@ class SecurityIntegrationTest {
 
     @Test
     void requestWithValidTokenShouldReturn200() throws Exception {
-        String token = jwtService.generateToken(UUID.randomUUID(), Role.PELAJAR);
+        UserEntity user = saveUser("security_valid", Role.PELAJAR);
+        String token = jwtService.generateToken(user.getUserId(), user.getRole());
 
         mockMvc.perform(get(SECURE_PING_PATH)
                         .header(AUTHORIZATION_HEADER, BEARER_PREFIX + token))
@@ -132,13 +133,24 @@ class SecurityIntegrationTest {
 
     @Test
     void pelajarTokenShouldGet403OnAdminEndpoint() throws Exception {
-        String token = jwtService.generateToken(UUID.randomUUID(), Role.PELAJAR);
+        UserEntity user = saveUser("security_pelajar", Role.PELAJAR);
+        String token = jwtService.generateToken(user.getUserId(), user.getRole());
 
         mockMvc.perform(get("/api/v1/admin/ping")
                         .header(AUTHORIZATION_HEADER, BEARER_PREFIX + token))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath(SUCCESS_JSON_PATH).value(false))
                 .andExpect(jsonPath(MESSAGE_JSON_PATH).isNotEmpty());
+    }
+
+    private UserEntity saveUser(String username, Role role) {
+        UserEntity user = new UserEntity();
+        user.setUsername(username);
+        user.setDisplayName("Security " + username);
+        user.setEmail(username + "@example.com");
+        user.setRole(role);
+        user.setPasswordHash("hash");
+        return userRepository.saveAndFlush(user);
     }
 
     @RestController

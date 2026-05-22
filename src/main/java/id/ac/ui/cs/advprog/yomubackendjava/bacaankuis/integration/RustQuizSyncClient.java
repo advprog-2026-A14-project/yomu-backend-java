@@ -31,10 +31,16 @@ public class RustQuizSyncClient implements QuizSyncClient {
     @Override
     public void sync(QuizSyncRequest request) {
         try {
+            QuizSyncRequest engineRequest = new QuizSyncRequest(
+                    request.getUserId(),
+                    EngineArticleIdMapper.toEngineArticleId(request.getArticleId()),
+                    request.getScore(),
+                    request.getAccuracy()
+            );
             restClient.post()
                     .uri(SYNC_ENDPOINT)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(request)
+                    .body(engineRequest)
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientException e) {
